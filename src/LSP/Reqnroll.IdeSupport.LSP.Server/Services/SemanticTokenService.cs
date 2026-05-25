@@ -18,25 +18,25 @@ namespace Reqnroll.IdeSupport.LSP.Server.Services;
 public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
 {
     // ── Legend ────────────────────────────────────────────────────────────────
-    // Token type indices must match the order of SemanticTokenTypes below.
-    private static readonly ImmutableArray<string> _tokenTypeNames =
+    // Token type indices must match the order of the _tokenTypes array below.
+    private static readonly ImmutableArray<SemanticTokenType> _tokenTypes =
     [
-        "keyword",      // 0 – DefinitionLineKeyword, StepKeyword
-        "string",       // 1 – Description, DocString
-        "parameter",    // 2 – StepParameter, ScenarioOutlinePlaceholder
-        "variable",     // 3 – Tag (@tag)
-        "comment",      // 4 – Comment
-        "class",        // 5 – FeatureBlock, RuleBlock, ScenarioDefinitionBlock, ExamplesBlock
-        "function",     // 6 – DefinedStep
-        "regexp",       // 7 – UndefinedStep
-        "struct",       // 8 – DataTable, DataTableHeader
-        "event",        // 9 – StepBlock
+        SemanticTokenType.Keyword,      // 0 – DefinitionLineKeyword, StepKeyword
+        SemanticTokenType.String,       // 1 – Description, DocString
+        SemanticTokenType.Parameter,    // 2 – StepParameter, ScenarioOutlinePlaceholder
+        SemanticTokenType.Variable,     // 3 – Tag (@tag)
+        SemanticTokenType.Comment,      // 4 – Comment
+        SemanticTokenType.Class,        // 5 – FeatureBlock, RuleBlock, ScenarioDefinitionBlock, ExamplesBlock
+        SemanticTokenType.Function,     // 6 – DefinedStep
+        SemanticTokenType.Regexp,       // 7 – UndefinedStep
+        SemanticTokenType.Struct,       // 8 – DataTable, DataTableHeader
+        SemanticTokenType.Event,        // 9 – StepBlock
     ];
 
-    private static readonly ImmutableArray<string> _tokenModifierNames =
+    private static readonly ImmutableArray<SemanticTokenModifier> _tokenModifiers =
     [
-        "declaration",  // 0 – block-level definition lines
-        "deprecated",   // 1 – UndefinedStep / BindingError
+        SemanticTokenModifier.Declaration,  // 0 – block-level definition lines
+        SemanticTokenModifier.Deprecated,   // 1 – UndefinedStep / BindingError
     ];
 
     private enum TokenType
@@ -66,13 +66,13 @@ public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
     private readonly ILanguageServerFacade _languageServer;
     private readonly IDeveroomLogger _logger;
 
-    // key: (uri, version)  value: encoded token array
+    // key: (uri, version)  value: encoded token data
     private readonly ConcurrentDictionary<(DocumentUri, int), SemanticTokens> _cache = new();
 
     public SemanticTokensLegend Legend { get; } = new SemanticTokensLegend
     {
-        TokenTypes = new Container<string>(_tokenTypeNames),
-        TokenModifiers = new Container<string>(_tokenModifierNames),
+        TokenTypes = new Container<SemanticTokenType>([.. _tokenTypes]),
+        TokenModifiers = new Container<SemanticTokenModifier>([.. _tokenModifiers]),
     };
 
     // ── Construction / tear-down ──────────────────────────────────────────────
@@ -107,7 +107,7 @@ public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
         try
         {
             var encoded = Encode(e.Tags);
-            var tokens = new SemanticTokens { Data = new Container<int>(encoded) };
+            var tokens = new SemanticTokens { Data = [.. encoded] };
 
             _cache[(e.Uri, e.Version)] = tokens;
             PurgePriorVersions(e.Uri, e.Version);
@@ -129,9 +129,9 @@ public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
     {
         try
         {
-            await _languageServer.Workspace.SendRequest(
-                "workspace/semanticTokens/refresh",
-                CancellationToken.None);
+            await _languageServer.Client
+                .SendRequest(WorkspaceNames.SemanticTokensRefresh)
+                .ReturningVoid(CancellationToken.None);
         }
         catch (Exception ex)
         {
