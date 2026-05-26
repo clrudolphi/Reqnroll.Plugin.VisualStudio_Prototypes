@@ -10,10 +10,8 @@
 - Open question: Should we keep the `SpecFlowProjectDetector` to test for unsupported legacy projects. If found, what do we do?
 - Remove `SpecFlowPackageDetector.cs` from `Reqnroll.IDE.Common`
 - Question: We can keep detection of programming language, but what do we do when we find VB or F#?
-- Eliminate FluentAssertions from test projects; replace with `Shouldly` or xUnit assertions
 
 ### 1b. Update & Port
-- Update test framework version list in `AddNewReqnrollProjectViewModel` to latest (xUnit 2.9+, NUnit 4.x, MSTest 3.x)
 - Port Welcome Wizard: wire `WelcomeDialogViewModel` → `VsWizardDialogService` → VS extension activation event
 - Port Prior Version Detection: implement version-check logic in `UpgradeDialogViewModel`; connect to extension startup in `ReqnrollPluginPackage`
 - Port unit tests for wizard layer (`WelcomeDialogViewModel`, `UpgradeDialogViewModel`, `ReqnrollProjectTemplateWizard`, `VsWizardDialogService`)
@@ -67,7 +65,6 @@
 - Remove hard VS dependency from non-VS code paths
 
 ### 3b. Gherkin
-- Upgrade `Gherkin` NuGet package to latest version across all projects
 - Validate `GherkinFormatConfiguration` and `EditorConfiguration` still map correctly after upgrade
 
 ### 3c. C# Parser

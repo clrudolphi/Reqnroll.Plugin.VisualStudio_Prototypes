@@ -18,8 +18,9 @@ internal class ReqnrollPackageDetector
     {
         "Reqnroll.MsTest",
         "Reqnroll.xUnit",
+        "Reqnroll.xunit.v3",
         "Reqnroll.NUnit",
-        "Reqnroll.MsTest"
+        "Reqnroll.TUnit"
     };
 
     private static readonly string[] KnownReqnrollPackages =
