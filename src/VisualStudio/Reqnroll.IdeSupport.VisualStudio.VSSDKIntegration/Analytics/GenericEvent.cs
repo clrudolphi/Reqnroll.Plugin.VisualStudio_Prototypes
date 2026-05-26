@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel.Composition;
 
-namespace Reqnroll.VisualStudio.Analytics;
+namespace Reqnroll.IdeSupport.VisualStudio.Analytics;
 
 [Export(typeof(IAnalyticsEvent))]
 public record GenericEvent : Reqnroll.IdeSupport.Common.Analytics.GenericEvent

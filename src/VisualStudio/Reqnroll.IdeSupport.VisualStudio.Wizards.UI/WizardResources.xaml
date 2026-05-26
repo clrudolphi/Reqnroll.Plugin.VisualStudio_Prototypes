@@ -1,6 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    x:Class="Reqnroll.VisualStudio.Wizards.UI.WizardResources">
+                    x:Class="Reqnroll.IdeSupport.VisualStudio.Wizards.UI.WizardResources">
     <!--
         Ported from Reqnroll.VisualStudio.UI\DeveroomResources.xaml.
         The VS SDK color-theme overwrite (DeveroomResources.xaml.cs / OverwriteVsStyles)

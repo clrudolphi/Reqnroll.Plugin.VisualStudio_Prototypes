@@ -3,7 +3,7 @@ using System;
 using System.ComponentModel.Composition;
 using System.Linq;
 
-namespace Reqnroll.VisualStudio.SDKIntegration.Analytics;
+namespace Reqnroll.IdeSupport.VisualStudio.SDKIntegration.Analytics;
 
 
 [Export(typeof(IEnableAnalyticsChecker))]

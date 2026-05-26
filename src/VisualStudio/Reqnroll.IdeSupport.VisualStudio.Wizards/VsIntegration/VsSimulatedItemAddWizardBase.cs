@@ -1,11 +1,10 @@
 // VsIntegration layer — VS SDK references expected here.
 #nullable disable
 using EnvDTE;
-using System.Text.RegularExpressions;
-using Reqnroll.VisualStudio.Wizards.Utilities;
 using Reqnroll.IdeSupport.Common;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Ported from VsSimulatedItemAddProjectScopeWizard.

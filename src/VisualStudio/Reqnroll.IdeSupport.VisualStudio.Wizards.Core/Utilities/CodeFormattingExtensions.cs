@@ -2,7 +2,7 @@
 
 // Ported from Reqnroll.VisualStudio\Snippets\Fallback\CodeFormattingExtensions.cs
 // (originally imported from SpecFlow v2.4)
-namespace Reqnroll.VisualStudio.Wizards.Utilities;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Utilities;
 
 internal static class CodeFormattingExtensions
 {

@@ -1,13 +1,9 @@
 // VsIntegration layer — VS SDK references are expected here.
 using Microsoft.Internal.VisualStudio.PlatformUI;
-using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using Reqnroll.VisualStudio.Wizards.UI;
-using Reqnroll.VisualStudio.Wizards.UI.Dialogs;
-using Reqnroll.VisualStudio.Wizards.UI.ViewModels;
-using Reqnroll.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 public class VsWizardDialogService : IWizardDialogService
 {
@@ -29,8 +25,7 @@ public class VsWizardDialogService : IWizardDialogService
 
         return new AddNewProjectWizardResult(
             vm.DotNetFramework,
-            vm.UnitTestFramework,
-            vm.FluentAssertionsIncluded);
+            vm.UnitTestFramework);
     }
 
     public void ShowWelcomeDialog()

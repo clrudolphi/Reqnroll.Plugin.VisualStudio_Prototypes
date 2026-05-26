@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace Reqnroll.VisualStudio.ProjectSystem;
+namespace Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
 
 public interface IDeveroomWindowManager
 {

@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Abstractions;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
 /// <summary>
 /// Telemetry surface for wizard events only — extracted from the
@@ -10,5 +10,5 @@ public interface IWizardTelemetry
     void OnFeatureFileAdded(WizardProjectSettings projectSettings);
     void OnConfigFileAdded(WizardProjectSettings projectSettings);
     void OnProjectTemplateWizardStarted();
-    void OnProjectTemplateWizardCompleted(string dotNetFramework, string unitTestFramework, bool fluentAssertions);
+    void OnProjectTemplateWizardCompleted(string dotNetFramework, string unitTestFramework);
 }

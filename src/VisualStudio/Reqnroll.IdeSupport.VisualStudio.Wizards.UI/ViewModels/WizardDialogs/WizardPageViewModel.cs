@@ -1,5 +1,5 @@
 // Ported from Reqnroll.VisualStudio\UI\ViewModels\WizardDialogs\WizardPageViewModel.cs
-namespace Reqnroll.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
 
 public class WizardPageViewModel : INotifyPropertyChanged
 {

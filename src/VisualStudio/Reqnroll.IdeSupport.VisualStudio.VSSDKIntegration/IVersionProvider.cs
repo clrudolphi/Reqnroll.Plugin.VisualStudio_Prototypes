@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace Reqnroll.VisualStudio;
+namespace Reqnroll.IdeSupport.VisualStudio;
 
 public interface IVersionProvider
 {

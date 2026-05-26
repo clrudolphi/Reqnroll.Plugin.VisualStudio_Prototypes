@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.ApplicationInsights.Extensibility;
 using Reqnroll.IdeSupport.Common.Analytics;
 using System.ComponentModel.Composition;
 
-namespace Reqnroll.VisualStudio.Analytics;
+namespace Reqnroll.IdeSupport.VisualStudio.Analytics;
 
 // We cannot directly use IContextInitializer as dependency (with MEF), because there might be other extensions (e.g. SpecFlow)
 // that also export an implementation of IContextInitializer. We need to have a separate contract for "our" context initializer.

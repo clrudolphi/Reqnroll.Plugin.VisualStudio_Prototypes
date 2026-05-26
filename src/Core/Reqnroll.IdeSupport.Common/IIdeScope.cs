@@ -5,7 +5,7 @@ namespace Reqnroll.IdeSupport.Common;
 
 /// <summary>
 /// Minimal IDE scope contract needed by the Wizards layer.
-/// The full IIdeScope from Reqnroll.VisualStudio has ~15 members (text buffers,
+/// The full IIdeScope from Reqnroll.IdeSupport.VisualStudio has ~15 members (text buffers,
 /// Roslyn, solution events, etc.) that wizards do not need.
 /// </summary>
 public interface IIdeScope

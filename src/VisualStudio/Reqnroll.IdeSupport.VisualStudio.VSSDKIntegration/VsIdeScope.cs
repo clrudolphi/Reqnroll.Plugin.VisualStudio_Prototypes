@@ -5,16 +5,16 @@ using Microsoft.VisualStudio.Shell;
 using Reqnroll.IdeSupport.Common;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.Common.ProjectSystem;
-using Reqnroll.VisualStudio.Common;
-using Reqnroll.VisualStudio.Package.ProjectSystem;
-using Reqnroll.VisualStudio.SDKIntegration;
+using Reqnroll.IdeSupport.VisualStudio.Common;
+using Reqnroll.IdeSupport.VisualStudio.Package.ProjectSystem;
+using Reqnroll.IdeSupport.VisualStudio.SDKIntegration;
 using System.Collections.Concurrent;
 using System.ComponentModel.Composition;
 using System.Threading.Tasks;
 //using Document = Microsoft.CodeAnalysis.Document;
 using Project = EnvDTE.Project;
 
-namespace Reqnroll.VisualStudio.ProjectSystem;
+namespace Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
 
 [Export(typeof(IIdeScope))]
 [Export(typeof(IVsIdeScope))]
@@ -37,7 +37,7 @@ public class VsIdeScope : IVsIdeScope
     public VsIdeScope([Import(typeof(SVsServiceProvider))] IServiceProvider serviceProvider,
         IMonitoringService monitoringService,
         IFileSystemForIDE fileSystem,
-        Reqnroll.VisualStudio.Diagnostics.DeveroomCompositeLogger compositeLogger)
+        Reqnroll.IdeSupport.VisualStudio.Diagnostics.DeveroomCompositeLogger compositeLogger)
     {
         Logger = compositeLogger;
         ServiceProvider = serviceProvider;

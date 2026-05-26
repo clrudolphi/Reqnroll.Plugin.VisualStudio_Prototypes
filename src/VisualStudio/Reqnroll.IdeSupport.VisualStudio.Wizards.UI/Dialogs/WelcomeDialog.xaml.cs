@@ -1,8 +1,9 @@
 // Ported from Reqnroll.VisualStudio.UI\Dialogs\WelcomeDialog.xaml.cs
 // IVsUIShell dependency removed — WizardWindow base handles hosting.
-using Reqnroll.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Dialogs;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.Dialogs;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Dialogs;
 
 public partial class WelcomeDialog : WizardWindow
 {

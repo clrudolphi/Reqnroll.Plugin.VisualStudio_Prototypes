@@ -5,7 +5,7 @@ using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
 // ReSharper disable InconsistentNaming
 
 //based on: https://github.com/dotnet/project-system/blob/master/src/Microsoft.VisualStudio.ProjectSystem.Managed.VS/ProjectSystem/VS/Interop/IVsAppId.cs
-namespace Reqnroll.VisualStudio.Interop;
+namespace Reqnroll.IdeSupport.VisualStudio.Interop;
 
 [Guid("1EAA526A-0898-11d3-B868-00C04F79F802")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

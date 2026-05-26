@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Abstractions;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
 /// <summary>
 /// Shows wizard-owned dialogs. Implemented by VsWizardDialogService

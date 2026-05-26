@@ -1,5 +1,5 @@
 using Reqnroll.IdeSupport.Common.Diagnostics;
-//using Reqnroll.VisualStudio.Monitoring;
+//using Reqnroll.IdeSupport.VisualStudio.Monitoring;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;

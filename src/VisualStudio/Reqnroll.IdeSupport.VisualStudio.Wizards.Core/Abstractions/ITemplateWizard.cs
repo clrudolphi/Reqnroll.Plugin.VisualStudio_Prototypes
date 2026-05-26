@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Abstractions;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
 /// <summary>
 /// Replaces IDeveroomWizard. Implemented by FeatureFileTemplateWizard,

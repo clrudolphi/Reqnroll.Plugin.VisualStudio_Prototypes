@@ -2,7 +2,7 @@
 
 using System.Collections.Generic;
 
-namespace Reqnroll.VisualStudio.ProjectSystem;
+namespace Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
 
 public interface IDeveroomErrorListServices
 {

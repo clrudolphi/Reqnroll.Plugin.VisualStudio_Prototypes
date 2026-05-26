@@ -1,15 +1,11 @@
 #nullable disable
-using System;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Navigation;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.Controls;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Controls;
 
 [ContentProperty("MarkDownText")]
 public class MarkDownTextBlock : RichTextBox

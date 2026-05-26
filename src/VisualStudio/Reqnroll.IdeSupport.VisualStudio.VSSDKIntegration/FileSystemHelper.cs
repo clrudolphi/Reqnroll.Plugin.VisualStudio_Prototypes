@@ -1,6 +1,6 @@
 ﻿#nullable disable
 
-namespace Reqnroll.VisualStudio.Common;
+namespace Reqnroll.IdeSupport.VisualStudio.Common;
 
 public static class FileSystemHelper
 {

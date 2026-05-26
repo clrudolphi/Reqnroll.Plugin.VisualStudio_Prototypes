@@ -2,7 +2,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using System.Collections;
 using System.ComponentModel.Composition;
 
-namespace Reqnroll.VisualStudio.Diagnostics;
+namespace Reqnroll.IdeSupport.VisualStudio.Diagnostics;
 
 [Export(typeof(IDeveroomLogger))]
 [Export(typeof(DeveroomCompositeLogger))]

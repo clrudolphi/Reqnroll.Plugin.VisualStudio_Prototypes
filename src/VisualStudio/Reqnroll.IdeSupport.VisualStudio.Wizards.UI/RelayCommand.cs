@@ -1,6 +1,6 @@
 // A portable ICommand implementation that replaces the VS SDK DelegateCommand
 // (Microsoft.VisualStudio.PlatformUI.DelegateCommand) for use in the wizard layer.
-namespace Reqnroll.VisualStudio.Wizards.UI;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI;
 
 public sealed class RelayCommand : ICommand
 {

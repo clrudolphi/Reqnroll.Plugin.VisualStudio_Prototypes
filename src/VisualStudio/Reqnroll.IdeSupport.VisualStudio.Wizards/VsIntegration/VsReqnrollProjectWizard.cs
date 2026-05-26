@@ -1,8 +1,8 @@
 // VsIntegration layer
 using Reqnroll.IdeSupport.Common;
-using Reqnroll.VisualStudio.Wizards.Core;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Ported from VsReqnrollProjectWizard.

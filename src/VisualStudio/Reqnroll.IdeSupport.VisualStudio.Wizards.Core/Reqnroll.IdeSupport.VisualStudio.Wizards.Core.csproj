@@ -17,4 +17,8 @@
     -->
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Reqnroll.IdeSupport.Common\Reqnroll.IdeSupport.Common.csproj" />
+  </ItemGroup>
+
 </Project>

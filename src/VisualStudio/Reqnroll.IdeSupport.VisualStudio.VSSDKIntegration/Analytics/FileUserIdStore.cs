@@ -3,7 +3,7 @@ using Reqnroll.IdeSupport.Common.Analytics;
 using System;
 using System.ComponentModel.Composition;
 
-namespace Reqnroll.VisualStudio.SDKIntegration.Analytics;
+namespace Reqnroll.IdeSupport.VisualStudio.SDKIntegration.Analytics;
 
 
 [Export(typeof(IUserUniqueIdStore))]

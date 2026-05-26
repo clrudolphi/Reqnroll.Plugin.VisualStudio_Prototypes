@@ -1,6 +1,7 @@
 // Ported from Reqnroll.VisualStudio\UI\ViewModels\WizardDialogs\WizardViewModel.cs
 // DelegateCommand (VS SDK) replaced with RelayCommand (portable).
-namespace Reqnroll.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
 
 public class WizardViewModel : INotifyPropertyChanged
 {

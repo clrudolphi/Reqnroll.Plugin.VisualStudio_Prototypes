@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.Infrastructure;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Infrastructure;
 
 // source: https://dzone.com/articles/goodbye
 /// <summary>

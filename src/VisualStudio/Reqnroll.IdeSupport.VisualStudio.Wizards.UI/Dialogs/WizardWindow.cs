@@ -1,7 +1,7 @@
 using System.Windows.Navigation;
-using Reqnroll.VisualStudio.Wizards.UI.Controls;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Controls;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.Dialogs;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Dialogs;
 
 /// <summary>
 /// Base class for all wizard dialogs. Has NO VS SDK dependency.

@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Abstractions;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
 /// <summary>
 /// A self-contained, minimal project settings model for use within the

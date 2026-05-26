@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Core;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
 
 /// <summary>
 /// Replacement dictionary keys used across wizard logic.

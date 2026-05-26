@@ -4,7 +4,7 @@ using System.ComponentModel.Composition;
 using System.Linq;
 using System.Reflection;
 
-namespace Reqnroll.VisualStudio;
+namespace Reqnroll.IdeSupport.VisualStudio;
 
 [Export(typeof(IVersionProvider))]
 public class VersionProvider : IVersionProvider

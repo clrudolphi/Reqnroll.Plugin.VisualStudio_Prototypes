@@ -1,8 +1,7 @@
 // Ported from Reqnroll.VisualStudio\UI\ViewModels\AddNewReqnrollProjectViewModel.cs
 #nullable disable
-using System.Collections.Generic;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.ViewModels;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels;
 
 public class AddNewReqnrollProjectViewModel : INotifyPropertyChanged
 {
@@ -16,7 +15,6 @@ public class AddNewReqnrollProjectViewModel : INotifyPropertyChanged
     {
         DotNetFramework = Net9,
         UnitTestFramework = MsTest,
-        FluentAssertionsIncluded = false
     };
 #endif
 
@@ -37,10 +35,6 @@ public class AddNewReqnrollProjectViewModel : INotifyPropertyChanged
 
     public string UnitTestFramework { get; set; } = MsTest;
 
-    // FluentAssertions suggestion is temporarily hidden from the UI as it is not free for commercial use anymore.
-    // See https://xceed.com/fluent-assertions-faq/
-    // Maybe we could consider suggesting https://github.com/shouldly/shouldly instead.
-    public bool FluentAssertionsIncluded { get; set; } = false;
 
     public ObservableCollection<string> TestFrameworks { get; } =
         new(new List<string> { "MSTest", "NUnit", "xUnit", "xUnit.v3", "TUnit" });

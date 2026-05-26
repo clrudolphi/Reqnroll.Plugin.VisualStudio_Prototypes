@@ -1,10 +1,10 @@
 ﻿#nullable enable
 using Reqnroll.IdeSupport.Common.Analytics;
-using Reqnroll.VisualStudio.Diagnostics;
+using Reqnroll.IdeSupport.VisualStudio.Diagnostics;
 using System.ComponentModel.Composition;
 using System.Net.Http;
 
-namespace Reqnroll.VisualStudio.Analytics;
+namespace Reqnroll.IdeSupport.VisualStudio.Analytics;
 
 [Export(typeof(IAnalyticsTransmitter))]
 public class AnalyticsTransmitter : Reqnroll.IdeSupport.Common.Analytics.AnalyticsTransmitter

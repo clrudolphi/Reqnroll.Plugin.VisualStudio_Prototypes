@@ -2,10 +2,11 @@
 // Adapts the full IMonitoringService to the narrow IWizardTelemetry surface.
 using Reqnroll.IdeSupport.Common.ProjectSystem;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 using OriginalMonitoringService = Reqnroll.IdeSupport.Common.IMonitoringService;
 using OriginalProjectSettings = Reqnroll.IdeSupport.Common.ProjectSystem.Settings.ProjectSettings;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Adapts IMonitoringService to IWizardTelemetry. Also implements
@@ -29,8 +30,8 @@ public class VsWizardTelemetry : IWizardTelemetry, IWizardTelemetryLogger
     public void OnProjectTemplateWizardStarted() =>
         _monitoringService.MonitorProjectTemplateWizardStarted();
 
-    public void OnProjectTemplateWizardCompleted(string dotNetFramework, string unitTestFramework, bool fluentAssertions) =>
-        _monitoringService.MonitorProjectTemplateWizardCompleted(dotNetFramework, unitTestFramework, fluentAssertions);
+    public void OnProjectTemplateWizardCompleted(string dotNetFramework, string unitTestFramework) =>
+        _monitoringService.MonitorProjectTemplateWizardCompleted(dotNetFramework, unitTestFramework, false);
 
     public void MonitorError(Exception exception, bool? isFatal = null) =>
         _monitoringService.MonitorError(exception, isFatal);

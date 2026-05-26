@@ -7,7 +7,9 @@
 // with whatever the new project system provides.
 
 using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
-using Reqnroll.VisualStudio.Wizards.Core;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
+
+
 
 // Aliases to types from Reqnroll.VisualStudio — available via project reference
 // when compiled inside the original solution.
@@ -15,7 +17,7 @@ using OriginalIdeScope = Reqnroll.IdeSupport.Common.IIdeScope;
 using OriginalProjectScope = Reqnroll.IdeSupport.Common.ProjectSystem.IProjectScope;
 using OriginalProjectSettings = Reqnroll.IdeSupport.Common.ProjectSystem.Settings.ProjectSettings;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Implements IWizardContext using the full VS DTE / IProjectScope objects

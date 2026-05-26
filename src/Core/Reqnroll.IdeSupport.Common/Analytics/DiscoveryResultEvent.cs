@@ -6,7 +6,7 @@ discovery results will be conveyed from the out-of-proc LSP to the extension.
  */
 
 
-//namespace Reqnroll.VisualStudio.Analytics;
+//namespace Reqnroll.IdeSupport.VisualStudio.Analytics;
 
 //public record DiscoveryResultEvent : GenericEvent
 //{

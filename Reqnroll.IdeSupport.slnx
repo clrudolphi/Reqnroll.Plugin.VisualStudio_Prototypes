@@ -3,6 +3,7 @@
         <File Path="README.md" />
         <File Path="Directory.Build.props" />
         <File Path="build/Version.props" />
+        <File Path="to dos.md" />
     </Folder>
     <Folder Name="/Core/">
         <Project Path="src/Core/Reqnroll.IdeSupport.Common/Reqnroll.IdeSupport.Common.csproj" Id="9b9365f9-b9e0-48cf-a611-af594033611e" />
@@ -19,9 +20,9 @@
         <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.ItemTemplates/Reqnroll.IdeSupport.VisualStudio.ItemTemplates.csproj" />
         <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.ProjectTemplate/Reqnroll.IdeSupport.VisualStudio.ProjectTemplate.csproj" />
         <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration/Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration.csproj" Id="2a25a5d5-1e64-49cd-8a01-0a6b98ba17e9" />
-        <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Wizards/Reqnroll.IdeSupport.VisualStudio.Wizards.csproj" />
         <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Wizards.Core/Reqnroll.IdeSupport.VisualStudio.Wizards.Core.csproj" />
         <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Wizards.UI/Reqnroll.IdeSupport.VisualStudio.Wizards.UI.csproj" />
+        <Project Path="src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Wizards/Reqnroll.IdeSupport.VisualStudio.Wizards.csproj" />
     </Folder>
     <Folder Name="/Tests/">
         <Project Path="tests/Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Tester/Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Tester.csproj" />

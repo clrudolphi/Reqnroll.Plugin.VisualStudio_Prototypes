@@ -1,6 +1,6 @@
-using Reqnroll.VisualStudio.Wizards.Utilities; 
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Utilities; 
 
-namespace Reqnroll.VisualStudio.Wizards.Core;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
 
 /// <summary>
 /// Ported from Reqnroll.VisualStudio\Wizards\ReqnrollProjectWizard.cs.
@@ -30,8 +30,7 @@ public class ReqnrollProjectTemplateWizard : ITemplateWizard
 
         _telemetry.OnProjectTemplateWizardCompleted(
             result.DotNetFramework,
-            result.UnitTestFramework,
-            result.FluentAssertionsIncluded);
+            result.UnitTestFramework);
 
         // Clean the project name to ensure it is a valid C# identifier for RootNamespace.
         var projectNameParts = context.ReplacementsDictionary["$projectname$"].Split('.');
@@ -44,8 +43,6 @@ public class ReqnrollProjectTemplateWizard : ITemplateWizard
         context.ReplacementsDictionary.Add(WizardContextKeys.IsNetFrameworkKey,
             result.IsNetFramework.ToString(System.Globalization.CultureInfo.InvariantCulture));
         context.ReplacementsDictionary.Add("$unittestframework$", result.UnitTestFramework);
-        context.ReplacementsDictionary.Add("$fluentassertionsincluded$",
-            result.FluentAssertionsIncluded.ToString(System.Globalization.CultureInfo.InvariantCulture));
         context.ReplacementsDictionary.Add("$rootnamespace$", rootNamespace);
 
         if (!result.IsNetFramework)
@@ -65,8 +62,6 @@ public class ReqnrollProjectTemplateWizard : ITemplateWizard
                     break;
                 // TUnit: no global using required
             }
-            if (result.FluentAssertionsIncluded)
-                globalUsings.AppendLine("    <Using Include=\"FluentAssertions\" />");
 
             context.ReplacementsDictionary.Add("$globalUsings$", globalUsings.ToString());
         }

@@ -1,11 +1,8 @@
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Windows;
 using System.Windows.Media;
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Builds a dictionary of themed WPF resources from the current VS theme.

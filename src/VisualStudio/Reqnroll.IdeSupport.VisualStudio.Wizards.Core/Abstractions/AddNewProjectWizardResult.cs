@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Abstractions;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
 /// <summary>
 /// Data returned by IWizardDialogService.ShowAddNewProjectDialog().
@@ -9,17 +9,14 @@ public sealed class AddNewProjectWizardResult
 {
     public AddNewProjectWizardResult(
         string dotNetFramework,
-        string unitTestFramework,
-        bool fluentAssertionsIncluded)
+        string unitTestFramework)
     {
         DotNetFramework = dotNetFramework;
         UnitTestFramework = unitTestFramework;
-        FluentAssertionsIncluded = fluentAssertionsIncluded;
     }
 
     public string DotNetFramework { get; }
     public string UnitTestFramework { get; }
-    public bool FluentAssertionsIncluded { get; }
 
     public bool IsNetFramework =>
         DotNetFramework.StartsWith("net4", StringComparison.OrdinalIgnoreCase);

@@ -1,4 +1,4 @@
-namespace Reqnroll.VisualStudio.Wizards.Core;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
 
 /// <summary>
 /// Ported from Reqnroll.VisualStudio\Wizards\FeatureFileWizard.cs.

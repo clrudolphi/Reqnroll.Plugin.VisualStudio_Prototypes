@@ -6,11 +6,11 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.Common.ProjectSystem;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
-using Reqnroll.VisualStudio.Common;
-using Reqnroll.VisualStudio.ProjectSystem;
+using Reqnroll.IdeSupport.VisualStudio.Common;
+using Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
 using System.Collections.Concurrent;
 
-namespace Reqnroll.VisualStudio.SDKIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.SDKIntegration;
 
 public class VsProjectScope : IProjectScope
 {

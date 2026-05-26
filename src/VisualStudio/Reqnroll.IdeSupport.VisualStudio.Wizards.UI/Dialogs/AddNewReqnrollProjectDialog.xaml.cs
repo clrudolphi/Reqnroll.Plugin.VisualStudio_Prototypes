@@ -1,9 +1,10 @@
 // Ported from Reqnroll.VisualStudio.UI\Dialogs\AddNewReqnrollProjectDialog.xaml.cs
 // IVsUIShell dependency removed.
 using System.Windows.Controls;
-using Reqnroll.VisualStudio.Wizards.UI.ViewModels;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Dialogs;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.Dialogs;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Dialogs;
 
 public partial class AddNewReqnrollProjectDialog : WizardWindow
 {

@@ -1,8 +1,8 @@
-using Reqnroll.VisualStudio.Wizards.UI.Dialogs;
-using Reqnroll.VisualStudio.Wizards.UI.ViewModels;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Dialogs;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels;
 using System.Windows;
 
-namespace Reqnroll.VisualStudio.Wizards.UI.Tester;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.Tester;
 
 public partial class WizardUiTesterWindow : Window
 {

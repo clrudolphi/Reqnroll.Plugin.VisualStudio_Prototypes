@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.ApplicationInsights.Extensibility;
 using Reqnroll.IdeSupport.Common;
 using System.ComponentModel.Composition;
 
-namespace Reqnroll.VisualStudio.Analytics;
+namespace Reqnroll.IdeSupport.VisualStudio.Analytics;
 
 [Export(typeof(ITelemetryConfigurationHolder))]
 public class ApplicationInsightsConfigurationHolder : ITelemetryConfigurationHolder

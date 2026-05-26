@@ -1,6 +1,7 @@
-using Reqnroll.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+
 // Ported from Reqnroll.VisualStudio\UI\ViewModels\WelcomeDialogViewModel.cs
-namespace Reqnroll.VisualStudio.Wizards.UI.ViewModels;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels;
 
 public class WelcomeDialogViewModel : WizardViewModel
 {

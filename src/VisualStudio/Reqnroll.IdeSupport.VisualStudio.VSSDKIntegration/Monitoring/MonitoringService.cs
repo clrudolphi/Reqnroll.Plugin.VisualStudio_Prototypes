@@ -5,7 +5,7 @@ using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
 using System.Collections.Immutable;
 using System.ComponentModel.Composition;
 
-namespace Reqnroll.VisualStudio.Monitoring;
+namespace Reqnroll.IdeSupport.VisualStudio.Monitoring;
 
 [Export(typeof(IMonitoringService))]
 public class MonitoringService : IMonitoringService

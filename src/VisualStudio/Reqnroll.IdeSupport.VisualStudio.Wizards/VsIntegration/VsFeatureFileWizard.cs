@@ -1,7 +1,8 @@
 // VsIntegration layer
-using Reqnroll.VisualStudio.Wizards.Core;
 
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
+
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Ported from VsFeatureFileWizard. Resolves without MEF since

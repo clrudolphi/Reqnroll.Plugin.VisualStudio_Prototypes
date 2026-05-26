@@ -4,7 +4,7 @@ using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
-namespace Reqnroll.VisualStudio;
+namespace Reqnroll.IdeSupport.VisualStudio;
 
 public static class ServiceProviderExtensions
 {

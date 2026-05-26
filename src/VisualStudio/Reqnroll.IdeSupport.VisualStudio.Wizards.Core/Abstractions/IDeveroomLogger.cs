@@ -1,7 +1,7 @@
 // Minimal diagnostics types needed by the wizard layer.
 // In the new LSP extension these will be replaced by a project reference
 // to whatever diagnostics assembly is used there.
-namespace Reqnroll.VisualStudio.Wizards.Abstractions;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
 
 public interface IDeveroomLogger
 {

@@ -1,7 +1,9 @@
 // Ported from Reqnroll.VisualStudio\SafeDispatcherTimer.cs
 // Only used by VsSimulatedItemAddWizardBase — kept in VsIntegration because
 // it has a hard WPF (DispatcherTimer / MessageBox) dependency.
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
+
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 public class SafeDispatcherTimer
 {

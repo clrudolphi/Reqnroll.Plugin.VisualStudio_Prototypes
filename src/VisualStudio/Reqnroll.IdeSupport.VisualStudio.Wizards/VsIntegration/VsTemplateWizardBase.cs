@@ -4,13 +4,12 @@ using EnvDTE;
 using Microsoft.VisualStudio.TemplateWizard;
 using Reqnroll.IdeSupport.Common;
 using Reqnroll.IdeSupport.Common.ProjectSystem;
-using Reqnroll.VisualStudio.Wizards.Core;
+using Reqnroll.IdeSupport.VisualStudio.Package.ProjectSystem;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
 using Constants = EnvDTE.Constants;
 
-// Types from the original Reqnroll.VisualStudio assembly
-using OriginalIVsIdeScope = Reqnroll.VisualStudio.Package.ProjectSystem.IVsIdeScope;
-
-namespace Reqnroll.VisualStudio.Wizards.VsIntegration;
+namespace Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 
 /// <summary>
 /// Ported from VsProjectScopeWizard. Implements VS IWizard and bridges
@@ -176,7 +175,7 @@ public abstract class VsTemplateWizardBase<TWizard> : IWizard
     private IProjectScope GetProjectScope(Project project)
     {
         var projectSystem = VsUtils.SafeResolveMefDependency<IIdeScope>(project.DTE)
-            as OriginalIVsIdeScope;
+            as IVsIdeScope;
         return projectSystem?.GetProjectScope(project);
     }
 

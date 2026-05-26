@@ -9,4 +9,5 @@ global using System.Runtime.CompilerServices;
 global using System.Text;
 global using System.Text.RegularExpressions;
 global using System.Threading;
-global using Reqnroll.VisualStudio.Wizards.Abstractions;
+global using Reqnroll.IdeSupport.Common.Diagnostics;
+global using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;

@@ -12,13 +12,13 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
 using NuGet.VisualStudio.Contracts;
-using Reqnroll.VisualStudio.Interop;
+using Reqnroll.IdeSupport.VisualStudio.Interop;
 using System.Reflection;
 using System.Windows.Media;
 using IOleServiceProvider = Microsoft.VisualStudio.OLE.Interop.IServiceProvider;
 using IServiceProvider = System.IServiceProvider;
 
-namespace Reqnroll.VisualStudio;
+namespace Reqnroll.IdeSupport.VisualStudio;
 
 public static class VsUtils
 {
