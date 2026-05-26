@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Server;
@@ -9,7 +10,9 @@ using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using Reqnroll.IdeSupport.LSP.Server.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
-using Reqnroll.IdeSupport.LSP.Server.Handlers;
+using Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
+using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
+using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
@@ -41,6 +44,7 @@ public class Program
         });
 
         options.Services
+               .AddMediatR(typeof(Program))
                .AddSingleton<IDeveroomLogger,                    LspDeveroomLogger>()
                .AddSingleton<IIdeScope,                          LspIdeScope>()
                .AddSingleton<IMonitoringService>(sp => NullMonitoringService.Instance)
@@ -51,6 +55,11 @@ public class Program
                .AddSingleton<IDocumentBufferService,             DocumentBufferService>()
                .AddSingleton<IGherkinDocumentTaggerService,      GherkinDocumentTaggerService>()
                .AddSingleton<ISemanticTokenService,              SemanticTokenService>()
+               // GherkinDocumentParsedNotificationHandler is registered both as itself (singleton)
+               // and as the MediatR INotificationHandler so the same instance handles all notifications.
+               .AddSingleton<GherkinDocumentParsedNotificationHandler>()
+               .AddSingleton<INotificationHandler<GherkinDocumentParsedNotification>>(
+                   sp => sp.GetRequiredService<GherkinDocumentParsedNotificationHandler>())
                // Handlers must be pre-registered as singletons so DryIoc can resolve
                // them without an open scope (TrackingDisposableTransients rule).
                .AddSingleton<TextDocumentSyncHandler>()
@@ -63,10 +72,6 @@ public class Program
 
         options.OnStarted((languageServer, ct) =>
         {
-            // Resolve SemanticTokenService eagerly so it wires its event subscription
-            // before the first document arrives.
-            _ = languageServer.Services.GetRequiredService<ISemanticTokenService>();
-
             // Seed workspace scopes from the folders sent during the initialize handshake.
             var scopeManager = languageServer.Services.GetRequiredService<ILspWorkspaceScopeManager>();
             if (languageServer.ClientSettings.WorkspaceFolders != null)

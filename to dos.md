@@ -24,14 +24,6 @@
 - Register LSP client in `ReqnrollPluginPackage` using VS LSP client APIs; activate on `.feature` file open
 
 ### 2b. Internal Architecture
-- Create `ProtocolHandlers/` and `InternalHandlers/` folder structure in `LanguageServer` project
-- Eliminate C# events as internal collaboration mechanism; replace with:
-  - Direct method invocation for low-fan-out, synchronous flows
-  - MediatR Request/Response for cross-cutting or expensive deferred operations
-- Define `LspTextSnapshot` — immutable document snapshot carrying parse results and version
-- Refactor Gherkin parse pipeline: text change → parse → cache `DRTags` on `LspTextSnapshot`
-- Research and refactor DR tag parser: separate bind-mapping resolution into its own pipeline stage with independent cache
-- Refactor `GetTags` to pull from `LspTextSnapshot`, map to LSP ranges, and respond
 - Refactor semantic tag type mapping to match Cucumber/LSP conventions
 
 ### 2c. Protocol Handlers (LSP ↔ Client)

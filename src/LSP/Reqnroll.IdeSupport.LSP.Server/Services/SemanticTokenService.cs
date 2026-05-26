@@ -1,6 +1,5 @@
 ﻿using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Document;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
@@ -10,12 +9,11 @@ using System.Collections.Immutable;
 namespace Reqnroll.IdeSupport.LSP.Server.Services;
 
 /// <summary>
-/// Subscribes to <see cref="IGherkinDocumentTaggerService.GherkinDocumentTagsChanged"/>,
-/// maps <see cref="DeveroomTag"/> instances to LSP semantic token integer tuples,
-/// caches the encoded result, and notifies the client via
-/// <c>workspace/semanticTokens/refresh</c> on every update.
+/// Maps <see cref="DeveroomTag"/> instances to LSP semantic token integer tuples
+/// on demand and caches the encoded result per document version.
+/// Encoding is deferred until the client sends a semantic tokens request.
 /// </summary>
-public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
+public sealed class SemanticTokenService : ISemanticTokenService
 {
     // ── Legend ────────────────────────────────────────────────────────────────
     // Token type indices must match the order of the _tokenTypes array below.
@@ -62,8 +60,7 @@ public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
-    private readonly IGherkinDocumentTaggerService _taggerService;
-    private readonly ILanguageServerFacade _languageServer;
+    private readonly IDocumentBufferService _documentBufferService;
     private readonly IDeveroomLogger _logger;
 
     // key: (uri, version)  value: encoded token data
@@ -75,78 +72,35 @@ public sealed class SemanticTokenService : ISemanticTokenService, IDisposable
         TokenModifiers = new Container<SemanticTokenModifier>([.. _tokenModifiers]),
     };
 
-    // ── Construction / tear-down ──────────────────────────────────────────────
+    // ── Construction ──────────────────────────────────────────────────────────
     public SemanticTokenService(
-        IGherkinDocumentTaggerService taggerService,
-        ILanguageServerFacade languageServer,
+        IDocumentBufferService documentBufferService,
         IDeveroomLogger logger)
     {
-        _taggerService = taggerService;
-        _languageServer = languageServer;
+        _documentBufferService = documentBufferService;
         _logger = logger;
-
-        _taggerService.GherkinDocumentTagsChanged += OnTagsChanged;
-    }
-
-    public void Dispose()
-    {
-        _taggerService.GherkinDocumentTagsChanged -= OnTagsChanged;
     }
 
     // ── ISemanticTokenService ─────────────────────────────────────────────────
-    public async Task<SemanticTokens?> GetSemanticTokensAsync(
+    public Task<SemanticTokens?> GetSemanticTokensAsync(
         DocumentUri uri, int version, CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue((uri, version), out var tokens))
-            return tokens;
+            return Task.FromResult<SemanticTokens?>(tokens);
 
-        // Cache miss – ask the tagger to parse on-demand and encode the result.
-        var tags = await _taggerService.GetTagsAsync(uri, version).ConfigureAwait(false);
-        if (tags.Count == 0)
-            return null;
+        // Cache miss – encode from the tags already stored in the document buffer.
+        if (!_documentBufferService.TryGet(uri, out var buffer) || buffer?.Tags is not { } tags || tags.Count == 0)
+        {
+            _logger.LogVerbose($"SemanticTokenService: no tags available for {uri} v{version}");
+            return Task.FromResult<SemanticTokens?>(null);
+        }
 
         var encoded = Encode(tags);
         tokens = new SemanticTokens { Data = [.. encoded] };
         _cache[(uri, version)] = tokens;
-        return tokens;
-    }
-
-    // ── Event handler ─────────────────────────────────────────────────────────
-    private void OnTagsChanged(object? sender, GherkinDocumentTagsChangedEventArgs e)
-    {
-        try
-        {
-            var encoded = Encode(e.Tags);
-            var tokens = new SemanticTokens { Data = [.. encoded] };
-
-            _cache[(e.Uri, e.Version)] = tokens;
-            PurgePriorVersions(e.Uri, e.Version);
-
-            _logger.LogInfo(
-                $"SemanticTokenService: cached {encoded.Count / 5} tokens for {e.Uri} v{e.Version}");
-
-            // Fire-and-forget: the LSP spec allows the server to send this
-            // notification at any time to ask the client to re-request tokens.
-            _ = SendRefreshNotificationAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning($"SemanticTokenService: error encoding tags for {e.Uri}: {ex.Message}");
-        }
-    }
-
-    private async Task SendRefreshNotificationAsync()
-    {
-        try
-        {
-            await _languageServer.Client
-                .SendRequest(WorkspaceNames.SemanticTokensRefresh)
-                .ReturningVoid(CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning($"SemanticTokenService: refresh notification failed: {ex.Message}");
-        }
+        PurgePriorVersions(uri, version);
+        _logger.LogInfo($"SemanticTokenService: encoded {encoded.Count / 5} tokens for {uri} v{version}");
+        return Task.FromResult<SemanticTokens?>(tokens);
     }
 
     // ── Encoding ──────────────────────────────────────────────────────────────

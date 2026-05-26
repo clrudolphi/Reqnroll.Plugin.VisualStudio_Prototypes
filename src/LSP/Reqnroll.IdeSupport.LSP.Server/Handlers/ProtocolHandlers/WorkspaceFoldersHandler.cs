@@ -7,7 +7,7 @@ using Reqnroll.IdeSupport.LSP.Server.Workspace;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Handlers;
+namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 
 /// <summary>
 /// Handles <c>workspace/didChangeWorkspaceFolders</c> notifications.

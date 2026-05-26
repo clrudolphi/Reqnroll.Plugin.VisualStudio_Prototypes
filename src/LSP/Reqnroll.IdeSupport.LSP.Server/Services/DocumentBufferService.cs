@@ -1,13 +1,15 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using System.Collections.Concurrent;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Services;
 
-public record DocumentBuffer(DocumentUri Uri, int? Version, string Text);
+public record DocumentBuffer(DocumentUri Uri, int? Version, string Text, IReadOnlyCollection<DeveroomTag>? Tags = null);
 
 public interface IDocumentBufferService
 {
     void Update(DocumentUri uri, int? version, string text);
+    void UpdateTags(DocumentUri uri, IReadOnlyCollection<DeveroomTag> tags);
     void Remove(DocumentUri uri);
     bool TryGet(DocumentUri uri, out DocumentBuffer? buffer);
     IEnumerable<DocumentBuffer> All { get; }
@@ -19,6 +21,12 @@ public class DocumentBufferService : IDocumentBufferService
 
     public void Update(DocumentUri uri, int? version, string text)
         => _buffers[uri.ToString()] = new DocumentBuffer(uri, version, text);
+
+    public void UpdateTags(DocumentUri uri, IReadOnlyCollection<DeveroomTag> tags)
+        => _buffers.AddOrUpdate(
+            uri.ToString(),
+            _ => new DocumentBuffer(uri, null, string.Empty, tags),
+            (_, existing) => existing with { Tags = tags });
 
     public bool TryGet(DocumentUri uri, out DocumentBuffer? buffer)
         => _buffers.TryGetValue(uri.ToString(), out buffer);

@@ -5,10 +5,6 @@ namespace Reqnroll.IdeSupport.LSP.Server.Services
 {
     public interface IGherkinDocumentTaggerService
     {
-        event EventHandler<GherkinDocumentTagsChangedEventArgs> GherkinDocumentTagsChanged;
-
-        Task<IReadOnlyCollection<DeveroomTag>> GetTagsAsync(DocumentUri uri, int version);
-        Task OnDocumentChangedAsync(DocumentUri uri, int? version);
-        Task OnDocumentClosedAsync(DocumentUri uri);
+        Task<IReadOnlyCollection<DeveroomTag>> ParseAsync(DocumentUri uri, int? version);
     }
 }

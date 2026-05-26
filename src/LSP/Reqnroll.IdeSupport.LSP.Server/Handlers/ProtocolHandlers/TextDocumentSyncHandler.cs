@@ -5,14 +5,16 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
 using Reqnroll.IdeSupport.Common.Diagnostics;
+using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Handlers;
+namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 
 public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 {
     private readonly IDocumentBufferService _documentBufferService;
     private readonly IGherkinDocumentTaggerService _taggerService;
+    private readonly IMediator _mediator;
     private readonly IDeveroomLogger _logger;
 
     private static readonly TextDocumentSelector _featureFileSelector = new(
@@ -25,10 +27,12 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
     public TextDocumentSyncHandler(
         IDocumentBufferService documentBufferService,
         IGherkinDocumentTaggerService taggerService,
+        IMediator mediator,
         IDeveroomLogger logger)
     {
         _documentBufferService = documentBufferService;
         _taggerService = taggerService;
+        _mediator = mediator;
         _logger = logger;
     }
 
@@ -45,7 +49,7 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
             Save = new SaveOptions { IncludeText = false }
         };
 
-    public override Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
+    public override async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
         var uri = request.TextDocument.Uri;
         var version = request.TextDocument.Version;
@@ -54,11 +58,11 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         _logger.LogInfo($"Document opened: {uri} (version {version})");
         _documentBufferService.Update(uri, version, text);
 
-        return _taggerService.OnDocumentChangedAsync(uri, version)
-                             .ContinueWith(_ => Unit.Value, cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
+        await ParseAndNotifyAsync(uri, version, cancellationToken).ConfigureAwait(false);
+        return Unit.Value;
     }
 
-    public override Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
+    public override async Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
     {
         var uri = request.TextDocument.Uri;
         var version = request.TextDocument.Version;
@@ -69,8 +73,8 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         _logger.LogInfo($"Document changed: {uri} (version {version})");
         _documentBufferService.Update(uri, version, text);
 
-        return _taggerService.OnDocumentChangedAsync(uri, version)
-                             .ContinueWith(_ => Unit.Value, cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
+        await ParseAndNotifyAsync(uri, version, cancellationToken).ConfigureAwait(false);
+        return Unit.Value;
     }
 
     public override Task<Unit> Handle(DidSaveTextDocumentParams request, CancellationToken cancellationToken)
@@ -88,7 +92,17 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         _logger.LogInfo($"Document closed: {uri}");
         _documentBufferService.Remove(uri);
 
-        return _taggerService.OnDocumentClosedAsync(uri)
-                             .ContinueWith(_ => Unit.Value, cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
+        return Unit.Task;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private async Task ParseAndNotifyAsync(DocumentUri uri, int? version, CancellationToken cancellationToken)
+    {
+        var tags = await _taggerService.ParseAsync(uri, version).ConfigureAwait(false);
+        _documentBufferService.UpdateTags(uri, tags);
+        await _mediator.Publish(
+            new GherkinDocumentParsedNotification(uri, version ?? 0, tags),
+            cancellationToken).ConfigureAwait(false);
     }
 }
