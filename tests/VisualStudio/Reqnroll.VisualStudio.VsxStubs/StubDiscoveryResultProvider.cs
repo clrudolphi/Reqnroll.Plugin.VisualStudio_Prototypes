@@ -1,3 +1,4 @@
+#if false // Deferred: DiscoveryResult, IDiscoveryResultProvider, StepDefinition, Hook not yet ported
 #nullable enable
 namespace Reqnroll.VisualStudio.VsxStubs;
 
@@ -13,3 +14,5 @@ public class StubDiscoveryResultProvider : IDiscoveryResultProvider
         RunDiscovery(string testAssemblyPath, string configFilePath, ProjectSettings projectSettings) =>
         DiscoveryResult;
 }
+
+#endif

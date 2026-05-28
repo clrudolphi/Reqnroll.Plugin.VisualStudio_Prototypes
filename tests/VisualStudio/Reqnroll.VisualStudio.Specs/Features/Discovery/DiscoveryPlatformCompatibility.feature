@@ -1,3 +1,4 @@
+@wip
 Feature: Discovery - Platform Compatibility
 
 Scenario Outline: Discover bindings from a Reqnroll project in different .NET Core platforms

@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net481</TargetFramework>
+    <LangVersion>latest</LangVersion>
     <UseWPF>true</UseWPF>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
     <VsEditorAssembliesLocation Condition="'$(VsEditorAssembliesLocation)' == ''">$(MSBuildThisFileDirectory)..\ExternalTestDependencies\VS\</VsEditorAssembliesLocation>
     <NoWarn>CS0067;VSTHRD200</NoWarn>
     <!--CS0067: The event 'xxx' is never used-->
@@ -12,10 +13,10 @@
 
   <ItemGroup>
     <PackageReference Include="NSubstitute " Version="5.3.0" />
-    <PackageReference Include="FluentAssertions" Version="6.12.1" />
-    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="21.0.29" />
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
     <PackageReference Include="xunit.abstractions" Version="2.0.3" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.0.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.3.0" />
 
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.4.2119">
       <PrivateAssets>all</PrivateAssets>
@@ -24,15 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Reqnroll.VisualStudio\Reqnroll.VisualStudio.csproj" />
+    <ProjectReference Include="../../../src/Core/Reqnroll.IdeSupport.Common/Reqnroll.IdeSupport.Common.csproj" />
+    <ProjectReference Include="../../../src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration/Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration.csproj" />
+    <ProjectReference Include="../../../src/LSP/Reqnroll.IdeSupport.LSP.Core/Reqnroll.IdeSupport.LSP.Core.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Microsoft.VisualStudio.Platform.VSEditor">
-      <HintPath>$(VsEditorAssembliesLocation)CommonExtensions\Microsoft\Editor\Microsoft.VisualStudio.Platform.VSEditor.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.VisualStudio.Text.Internal">
-      <HintPath>$(VsEditorAssembliesLocation)PrivateAssemblies\Microsoft.VisualStudio.Text.Internal.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+  <!-- Deferred: Microsoft.VisualStudio.Platform.VSEditor and Microsoft.VisualStudio.Text.Internal
+       are not available in the current VS SDK configuration. -->
 </Project>

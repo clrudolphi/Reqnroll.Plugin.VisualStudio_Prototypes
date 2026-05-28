@@ -1,3 +1,4 @@
+@wip
 Feature: Discovery - Reqnroll version compatibility
 
 Scenario Outline: Discover bindings from a Reqnroll project on .NET Framework

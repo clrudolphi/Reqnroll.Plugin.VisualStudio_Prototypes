@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NSubstitute;
 using Reqnroll.VisualStudio.Snippets;
 using Reqnroll.VisualStudio.ProjectSystem;
@@ -50,4 +50,3 @@ namespace Reqnroll.VisualStudio.Tests.Snippets
             snippet.Should().Be(expectedSnippet);
         }
     }
-}

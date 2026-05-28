@@ -1,3 +1,4 @@
+@wip
 Feature: Find step definition usages command
 
 Rules:

@@ -165,6 +165,7 @@ public class StubWpfTextView : IWpfTextView
         return textView;
     }
 
+#if false // Deferred: DeveroomEditorTypeCharCommandBase not yet ported
     public void SimulateTypeText(DeveroomEditorTypeCharCommandBase command, string text, ITaggerProvider taggerProvider)
     {
         foreach (var ch in text) SimulateType(command, ch, taggerProvider);
@@ -184,11 +185,14 @@ public class StubWpfTextView : IWpfTextView
 
         command.PostExec(this, c);
     }
+#endif
 
+#if false // Deferred: DeveroomTag and GetUpToDateDeveroomTagsForSpan not yet ported
     public void ForceReparse(ITaggerProvider taggerProvider)
     {
         var tagger = taggerProvider.CreateTagger<DeveroomTag>(TextBuffer);
         var span = new SnapshotSpan(TextSnapshot, 0, TextSnapshot.Length);
         tagger.GetUpToDateDeveroomTagsForSpan(span);
     }
+#endif
 }

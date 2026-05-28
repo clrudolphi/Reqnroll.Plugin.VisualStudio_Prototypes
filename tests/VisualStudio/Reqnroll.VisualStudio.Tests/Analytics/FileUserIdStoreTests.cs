@@ -1,4 +1,5 @@
 #nullable disable
+using Reqnroll.IdeSupport.VisualStudio.SDKIntegration.Analytics;
 namespace Reqnroll.VisualStudio.Tests.Analytics;
 
 public class FileUserIdStoreTests

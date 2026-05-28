@@ -1,4 +1,4 @@
 ﻿namespace Reqnroll.VisualStudio.VsxStubs;
-public class MockFileSystemForVs : MockFileSystem, IFileSystemForVs
+public class MockFileSystemForVs : MockFileSystem, IFileSystemForIDE
 {
 }

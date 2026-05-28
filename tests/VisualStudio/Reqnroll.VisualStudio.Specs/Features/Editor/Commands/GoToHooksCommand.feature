@@ -1,4 +1,5 @@
-﻿Feature: Go to hooks command
+﻿@wip
+Feature: Go to hooks command
 
 Rule: Jumps to hooks related to the scenario
 

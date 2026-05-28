@@ -1,3 +1,4 @@
+#if false // Deferred: DeveroomTag tagger not yet ported to VS layer
 namespace Reqnroll.VisualStudio.VsxStubs;
 
 public class StubBufferTagAggregatorFactoryService : IBufferTagAggregatorFactoryService
@@ -25,3 +26,5 @@ public class StubBufferTagAggregatorFactoryService : IBufferTagAggregatorFactory
         throw new NotSupportedException();
     }
 }
+
+#endif

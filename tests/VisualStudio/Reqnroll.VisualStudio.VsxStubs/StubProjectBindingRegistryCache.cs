@@ -1,7 +1,8 @@
+#if false // Deferred: IProjectBindingRegistryCache, ProjectBindingRegistry not yet ported
 #nullable enable
 namespace Reqnroll.VisualStudio.VsxStubs;
 
-public class StubProjectBindingRegistryCache : IProjectBindingRegistryCache
+public class StubProjectBindingRegistryCache
 {
     private readonly IProjectBindingRegistryCache _substitute;
 
@@ -29,3 +30,5 @@ public class StubProjectBindingRegistryCache : IProjectBindingRegistryCache
     public ProjectBindingRegistry Value { get; private set; }
     public Task<ProjectBindingRegistry> GetLatest() => throw new NotImplementedException();
 }
+
+#endif

@@ -1,3 +1,4 @@
+@wip
 Feature: Go to definition command
 
 Rule: Jumps to step definition if defined

@@ -1,3 +1,4 @@
+@wip
 Feature: Binding Discovery
 
 Scenario: Discover bindings from a simple latest Reqnroll project

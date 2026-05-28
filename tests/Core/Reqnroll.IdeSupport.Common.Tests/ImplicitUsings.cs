@@ -1,0 +1,16 @@
+global using AwesomeAssertions;
+global using NSubstitute;
+global using Reqnroll.IdeSupport.Common;
+global using Reqnroll.IdeSupport.Common.Analytics;
+global using Reqnroll.IdeSupport.Common.Configuration;
+global using Reqnroll.IdeSupport.Common.Diagnostics;
+global using Reqnroll.IdeSupport.Common.ProjectSystem;
+global using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
+global using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
+global using System;
+global using System.Collections.Generic;
+global using System.Diagnostics;
+global using System.IO.Abstractions.TestingHelpers;
+global using System.Linq;
+global using System.Threading;
+global using Xunit;

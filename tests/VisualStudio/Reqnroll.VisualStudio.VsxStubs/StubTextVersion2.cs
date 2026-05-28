@@ -15,7 +15,7 @@ public record StubTextVersion2(
         0, Substitute.For<ITextBuffer>(),
         0, Substitute.For<ITextImageVersion>());
 
-    [CanBeNull] public ITextVersion Next { get; private set; } = null!;
+    public ITextVersion Next { get; private set; } = null!;
 
     public ITrackingPoint CreateTrackingPoint(int position, PointTrackingMode trackingMode) =>
         throw new NotImplementedException();

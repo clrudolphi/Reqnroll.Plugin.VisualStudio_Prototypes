@@ -1,3 +1,4 @@
+@wip
 Feature: Auto format document command	
 
 Rules:

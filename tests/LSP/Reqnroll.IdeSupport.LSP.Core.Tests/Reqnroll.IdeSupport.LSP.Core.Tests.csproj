@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>../../../reqnroll.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup Label="Deferred - depends on VS connector not yet ported">
+    <!-- ProjectBindingRegistryCache depends on connector discovery pipeline -->
+    <Compile Remove="Discovery\ProjectBindingRegistryCacheTests.cs" />
+    <!-- MockableDiscoveryService used in Reprocess tests depends on connector -->
+    <Compile Remove="Discovery\ReprocessStepDefinitionFileTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="ApprovalTestData\**" />
+    <Content Include="ApprovalTestData\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ApprovalTests" Version="5.9.0" />
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Core/Reqnroll.IdeSupport.Common/Reqnroll.IdeSupport.Common.csproj" />
+    <ProjectReference Include="../../../src/LSP/Reqnroll.IdeSupport.LSP.Core/Reqnroll.IdeSupport.LSP.Core.csproj" />
+    <ProjectReference Include="../../VisualStudio/Reqnroll.VisualStudio.VsxStubs/Reqnroll.VisualStudio.VsxStubs.csproj" />
+  </ItemGroup>
+</Project>

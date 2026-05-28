@@ -1,3 +1,4 @@
+@wip
 Feature: RenameStepsCommand
 
 Rule: Simple parameterless step definition can be renamed

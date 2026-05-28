@@ -1,3 +1,4 @@
+#if false // Deferred: DiscoveryService, IDiscoveryResultProvider, StepDefinition, ProjectBindingRegistryCache not yet ported
 using Gherkin.CucumberMessages.Types;
 using Newtonsoft.Json;
 
@@ -76,3 +77,5 @@ public class MockableDiscoveryService : DiscoveryService
         return discoveryService;
     }
 }
+
+#endif

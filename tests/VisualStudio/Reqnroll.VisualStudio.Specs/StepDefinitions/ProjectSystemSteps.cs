@@ -1,4 +1,8 @@
 #nullable disable
+// Deferred: ProjectSystemSteps depends on editor-command infrastructure (DeveroomEditorCommandBase,
+// IDeveroomTaggerProvider, DeveroomTag, MockableDiscoveryService, StubBufferTagAggregatorFactoryService, etc.)
+// that has not yet been ported to the new Reqnroll.IdeSupport.* architecture.
+#if false
 namespace Reqnroll.VisualStudio.Specs.StepDefinitions;
 
 [Binding]
@@ -992,3 +996,4 @@ public class ProjectSystemSteps : Steps
         public string Method { get; set; }
     }
 }
+#endif

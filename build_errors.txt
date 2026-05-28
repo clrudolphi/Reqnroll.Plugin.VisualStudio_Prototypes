@@ -1,0 +1,18 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Reqnroll.IdeSupport.LSP.Connector.Models -> C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\src\LSP\Reqnroll.IdeSupport.LSP.Connector\Reqnroll.IdeSupport.LSP.Connector.Models\bin\Debug\netstandard2.0\Reqnroll.IdeSupport.LSP.Connector.Models.dll
+  Reqnroll.IdeSupport.Common -> C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\src\Core\Reqnroll.IdeSupport.Common\bin\Debug\netstandard2.0\Reqnroll.IdeSupport.Common.dll
+  Reqnroll.IdeSupport.LSP.Core -> C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\src\LSP\Reqnroll.IdeSupport.LSP.Core\bin\Debug\netstandard2.0\Reqnroll.IdeSupport.LSP.Core.dll
+  Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration -> C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\src\VisualStudio\Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration\bin\Debug\net481\Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration.dll
+  Reqnroll.VisualStudio.VsxStubs -> C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.VsxStubs\bin\Debug\net481\Reqnroll.VisualStudio.VsxStubs.dll
+C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\ImplicitUsings.cs(39,42): error CS0234: The type or namespace name 'Editor' does not exist in the namespace 'Reqnroll.VisualStudio.Tests' (are you missing an assembly reference?) [C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\Reqnroll.VisualStudio.Tests.csproj]
+C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\ImplicitUsings.cs(40,42): error CS0234: The type or namespace name 'Editor' does not exist in the namespace 'Reqnroll.VisualStudio.Tests' (are you missing an assembly reference?) [C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\Reqnroll.VisualStudio.Tests.csproj]
+
+Build FAILED.
+
+C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\ImplicitUsings.cs(39,42): error CS0234: The type or namespace name 'Editor' does not exist in the namespace 'Reqnroll.VisualStudio.Tests' (are you missing an assembly reference?) [C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\Reqnroll.VisualStudio.Tests.csproj]
+C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\ImplicitUsings.cs(40,42): error CS0234: The type or namespace name 'Editor' does not exist in the namespace 'Reqnroll.VisualStudio.Tests' (are you missing an assembly reference?) [C:\Users\clrud\source\repos\scratch\Reqnroll.IdeSupport\tests\VisualStudio\Reqnroll.VisualStudio.Tests\Reqnroll.VisualStudio.Tests.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:02.71

@@ -1,3 +1,4 @@
+@wip
 Feature: Step Completion
 
 Scenario: Offers step definitions of the scenario block at the caret

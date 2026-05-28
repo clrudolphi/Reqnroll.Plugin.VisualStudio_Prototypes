@@ -1,36 +1,23 @@
 #nullable disable
 
-#nullable disable
-
 namespace Reqnroll.VisualStudio.VsxStubs.ProjectSystem;
 
-public class StubIdeActions : IIdeActions, IAsyncContextMenu
+public class StubIdeActions : IIdeActions
 {
     private readonly StubIdeScope _ideScope;
 
     public SourceLocation LastNavigateToSourceLocation;
     public string LastShowContextMenuHeader;
-    public List<ContextMenuItem> LastShowContextMenuItems;
+    // Deferred: ContextMenuItem, IAsyncContextMenu, QuestionDescription not yet ported
+    // public List<ContextMenuItem> LastShowContextMenuItems;
+    // public QuestionDescription LastShowQuestion { get; set; }
+
+    public string ClipboardText { get; private set; }
+    public bool IsComplete { get; private set; }
 
     public StubIdeActions(IIdeScope ideScope)
     {
         _ideScope = (StubIdeScope) ideScope;
-    }
-
-    public QuestionDescription LastShowQuestion { get; set; }
-    public string ClipboardText { get; private set; }
-
-    public CancellationToken CancellationToken { get; } = new();
-    public bool IsComplete { get; private set; }
-
-    public void AddItems(params ContextMenuItem[] items)
-    {
-        LastShowContextMenuItems.AddRange(items);
-    }
-
-    public void Complete()
-    {
-        IsComplete = true;
     }
 
     public bool NavigateTo(SourceLocation sourceLocation)
@@ -48,24 +35,9 @@ public class StubIdeActions : IIdeActions, IAsyncContextMenu
         _ideScope.Logger.LogException(_ideScope.MonitoringService, exception, description);
     }
 
-    public void ShowProblem(string description, string title = null)
+    public void ShowProblem(string description)
     {
         _ideScope.Logger.LogWarning($"User Notification: {description}");
-    }
-
-    public void ShowQuestion(QuestionDescription questionDescription)
-    {
-        _ideScope.Logger.LogInfo($"User question: {questionDescription.Description}");
-        LastShowQuestion = questionDescription;
-    }
-
-    public IAsyncContextMenu ShowContextMenu(string header, bool async, params ContextMenuItem[] contextMenuItems)
-    {
-        _ideScope.Logger.LogInfo("IDE Action performed");
-        LastShowContextMenuHeader = header;
-        LastShowContextMenuItems = contextMenuItems.ToList();
-        IsComplete = !async;
-        return this;
     }
 
     public void SetClipboardText(string text)
@@ -77,6 +49,5 @@ public class StubIdeActions : IIdeActions, IAsyncContextMenu
     {
         LastNavigateToSourceLocation = null;
         LastShowContextMenuHeader = null;
-        LastShowContextMenuItems = null;
     }
 }

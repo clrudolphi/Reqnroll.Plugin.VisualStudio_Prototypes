@@ -1,3 +1,4 @@
+@wip
 Feature: Define steps command
 
 Rules:

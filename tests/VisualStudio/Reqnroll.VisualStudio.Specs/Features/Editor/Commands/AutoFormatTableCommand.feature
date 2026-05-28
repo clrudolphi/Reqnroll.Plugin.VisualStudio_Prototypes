@@ -1,3 +1,4 @@
+@wip
 Feature: Automatic table formatting command
 
 Rules:

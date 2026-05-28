@@ -1,0 +1,16 @@
+global using AwesomeAssertions;
+global using NSubstitute;
+global using Reqnroll.IdeSupport.VisualStudio.Wizards.Abstractions;
+global using Reqnroll.IdeSupport.Common;
+global using Reqnroll.IdeSupport.Common.ProjectSystem;
+global using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
+global using Reqnroll.IdeSupport.VisualStudio.Wizards.Core;
+global using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels;
+global using Reqnroll.IdeSupport.VisualStudio.Wizards.UI.ViewModels.WizardDialogs;
+global using Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
+global using System;
+global using System.Collections.Generic;
+global using System.Collections.ObjectModel;
+global using System.ComponentModel;
+global using System.Linq;
+global using Xunit;

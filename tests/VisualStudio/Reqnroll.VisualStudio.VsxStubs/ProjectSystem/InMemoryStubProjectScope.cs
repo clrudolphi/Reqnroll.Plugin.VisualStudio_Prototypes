@@ -9,9 +9,9 @@ public class InMemoryStubProjectScope : IProjectScope
         StubIdeScope = stubIdeScope;
 
         StubProjectSettingsProvider = new StubProjectSettingsProvider(this);
-        Properties.AddProperty(typeof(IProjectSettingsProvider), StubProjectSettingsProvider);
+        Properties[typeof(IProjectSettingsProvider)] = StubProjectSettingsProvider;
         var configProvider = CreateConfigurationProvider();
-        Properties.AddProperty(typeof(IDeveroomConfigurationProvider), configProvider);
+        Properties[typeof(IDeveroomConfigurationProvider)] = configProvider;
         StubIdeScope.ProjectScopes.Add(this);
     }
 
@@ -24,7 +24,7 @@ public class InMemoryStubProjectScope : IProjectScope
     public StubProjectSettingsProvider StubProjectSettingsProvider { get; }
     public Dictionary<string, string> FilesAdded { get; } = new();
     public string ProjectFileName => ProjectName + ".csproj";
-    public PropertyCollection Properties { get; } = new();
+    public ConcurrentDictionary<Type, object> Properties { get; } = new();
     public IIdeScope IdeScope => StubIdeScope;
     public IEnumerable<NuGetPackageReference> PackageReferences => PackageReferencesList;
     public string ProjectFolder { get; } = Path.GetTempPath();
@@ -53,7 +53,7 @@ public class InMemoryStubProjectScope : IProjectScope
 
     public string[] GetProjectFiles(string extension)
     {
-        return FilesAdded.Keys.Where(f => FileSystemHelper.IsOfType(f, extension))
+        return FilesAdded.Keys.Where(f => Reqnroll.IdeSupport.VisualStudio.Common.FileSystemHelper.IsOfType(f, extension))
             .ToArray();
     }
 

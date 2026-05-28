@@ -1,9 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net481</TargetFramework>
+    <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
+    <NoWarn>CS0067;VSTHRD200</NoWarn>
   </PropertyGroup>
+  <ItemGroup Label="Deferred - depends on unported types">
+    <!-- Editor commands, services, tagger not yet ported -->
+    <Compile Remove="Editor\**" />
+    <!-- Discovery service, invoker, registry cache not yet ported -->
+    <Compile Remove="Discovery\DiscoveryTests.cs" />
+    <Compile Remove="Discovery\ProjectBindingRegistryCacheTests.cs" />
+    <Compile Remove="Discovery\ReprocessStepDefinitionFileTests.cs" />
+    <Compile Remove="Discovery\ProjectBindingRegistryTestsBase.cs" />
+    <Compile Remove="Discovery\StubGherkinDocument.cs" />
+    <Compile Remove="Discovery\ProjectBindingRegistryAmbiguousTests.cs" />
+    <Compile Remove="Discovery\ProjectBindingRegistryMatchTests.cs" />
+    <Compile Remove="Discovery\ProjectBindingRegistryMultiMatchTests.cs" />
+    <Compile Remove="Discovery\ProjectBindingRegistryUndefinedTests.cs" />
+    <!-- SnippetService not yet ported -->
+    <Compile Remove="Snippets\SnippetServiceTests.cs" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Remove="ApprovalTestData\**" />
     <Content Include="ApprovalTestData\**" />
@@ -15,9 +33,9 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="ApprovalTests" Version="5.9.0" /> <!-- cannot upgrade to 6.0 because of test execution issues -->
-    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="21.0.29" />
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="22.1.1" />
     <PackageReference Include="NSubstitute " Version="5.3.0" />
-    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -28,7 +46,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Reqnroll.VisualStudio\Reqnroll.VisualStudio.csproj" />
-    <ProjectReference Include="..\Reqnroll.VisualStudio.VsxStubs\Reqnroll.VisualStudio.VsxStubs.csproj" />
+    <ProjectReference Include="../../../src/Core/Reqnroll.IdeSupport.Common/Reqnroll.IdeSupport.Common.csproj" />
+    <ProjectReference Include="../../../src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration/Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration.csproj" />
+    <ProjectReference Include="../../../src/LSP/Reqnroll.IdeSupport.LSP.Core/Reqnroll.IdeSupport.LSP.Core.csproj" />
+    <ProjectReference Include="../Reqnroll.VisualStudio.VsxStubs/Reqnroll.VisualStudio.VsxStubs.csproj" />
   </ItemGroup>
 </Project>

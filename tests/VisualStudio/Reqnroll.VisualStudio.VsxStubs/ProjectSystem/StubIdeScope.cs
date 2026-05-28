@@ -2,26 +2,21 @@ namespace Reqnroll.VisualStudio.VsxStubs.ProjectSystem;
 
 public class StubIdeScope : IIdeScope, IDisposable
 {
-    private readonly IIdeScope _substitute;
-
     public StubIdeScope(ITestOutputHelper testOutputHelper)
     {
-        _substitute = Substitute.For<IIdeScope>();
-
         AnalyticsTransmitter = new StubAnalyticsTransmitter(Logger);
-        MonitoringService =
-            new MonitoringService(
-                AnalyticsTransmitter,
-                Substitute.For<IWelcomeService>(),
-                Substitute.For<ITelemetryConfigurationHolder>());
+    MonitoringService =
+        new MonitoringService(
+            AnalyticsTransmitter,
+            Substitute.For<ITelemetryConfigurationHolder>());
 
         CompositeLogger.Add(new DeveroomXUnitLogger(testOutputHelper));
         CompositeLogger.Add(StubLogger);
         Actions = new StubIdeActions(this);
-        VsxStubObjects.Initialize();
 
         SetupFireAndForget();
-        SetupFireAndForgetOnBackgroundThread((action, callerName) => BackGroundTasks = BackGroundTasks.Add($"{Interlocked.Increment(ref _taskId)}:{callerName}", action));
+        SetupFireAndForgetOnBackgroundThread((action, callerName) =>
+            BackGroundTasks = BackGroundTasks.Add($"{Interlocked.Increment(ref _taskId)}:{callerName}", action));
 
         CurrentTextView = Substitute.For<IWpfTextView>();
         TextViewFactory = (inputText, filePath) =>
@@ -33,6 +28,7 @@ public class StubIdeScope : IIdeScope, IDisposable
     {
         return StubWpfTextView.CreateTextView(inputText, text =>
         {
+            VsxStubObjects.Initialize();
             var projectScope = ProjectScopes.Single(p => p.FilesAdded.Any(f => f.Key == filePath));
             var textBuffer = VsxStubObjects.CreateTextBuffer(text.ToString(), contentType);
             textBuffer.Properties.AddProperty(typeof(IProjectScope), projectScope);
@@ -65,7 +61,7 @@ public class StubIdeScope : IIdeScope, IDisposable
     public IDeveroomLogger Logger => CompositeLogger;
     public IIdeActions Actions { get; set; }
     public IDeveroomWindowManager WindowManager => StubWindowManager;
-    public IFileSystemForVs FileSystem { get; private set; } = new MockFileSystemForVs();
+    public IFileSystemForIDE FileSystem { get; private set; } = new MockFileSystemForVs();
 
     public IDeveroomOutputPaneServices DeveroomOutputPaneServices { get; } =
         Substitute.For<IDeveroomOutputPaneServices>();
@@ -73,8 +69,8 @@ public class StubIdeScope : IIdeScope, IDisposable
     public IDeveroomErrorListServices DeveroomErrorListServices => StubErrorListServices;
     public IMonitoringService MonitoringService { get; }
 
-    [CanBeNull] public event EventHandler<EventArgs> WeakProjectsBuilt = null!;
-    [CanBeNull] public event EventHandler<EventArgs> WeakProjectOutputsUpdated = null!;
+    public event EventHandler<EventArgs> WeakProjectsBuilt = null!;
+    public event EventHandler<EventArgs> WeakProjectOutputsUpdated = null!;
 
     public void CalculateSourceLocationTrackingPositions(IEnumerable<SourceLocation> sourceLocations)
     {
@@ -98,31 +94,32 @@ public class StubIdeScope : IIdeScope, IDisposable
         return CSharpSyntaxTree.ParseText(fileContent);
     }
 
+    private Action<Func<Task>, Action<Exception>, string> _fireAndForgetHandler;
+
     public void FireAndForget(Func<Task> action, Action<Exception> onException,
         [CallerMemberName] string callerName = "???")
-        => _substitute.FireAndForget(action, onException, callerName);
+        => _fireAndForgetHandler(action, onException, callerName);
 
     private void SetupFireAndForget()
     {
-        _substitute.When(s => s.FireAndForget(Arg.Any<Func<Task>>(), Arg.Any<Action<Exception>>(), Arg.Any<string>()))
-            .Do(callInfo =>
+        _fireAndForgetHandler = (action, onException, _) =>
+        {
+            try
             {
-                var action = callInfo.Arg<Func<Task>>();
-                var onException = callInfo.Arg<Action<Exception>>();
-                try
-                {
-                    action().Wait();
-                }
-                catch (Exception e)
-                {
-                    Logger.LogException(MonitoringService, e);
-                    onException(e);
-                }
-            });
+                action().Wait();
+            }
+            catch (Exception e)
+            {
+                Logger.LogException(MonitoringService, e);
+                onException(e);
+            }
+        };
     }
 
-    public void FireAndForgetOnBackgroundThread(Func<CancellationToken, Task> action, string callerName = "???") =>
-        _substitute.FireAndForgetOnBackgroundThread(action, callerName);
+    private Action<Func<CancellationToken, Task>, string> _fireAndForgetOnBackgroundThreadHandler;
+
+    public void FireAndForgetOnBackgroundThread(Func<CancellationToken, Task> action, string callerName = "???")
+        => _fireAndForgetOnBackgroundThreadHandler(action, callerName);
 
     private volatile int _taskId;
 
@@ -139,13 +136,7 @@ public class StubIdeScope : IIdeScope, IDisposable
 
     public void SetupFireAndForgetOnBackgroundThread(Action<Func<CancellationToken, Task>, string> callback)
     {
-        _substitute.When(s => s.FireAndForgetOnBackgroundThread(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<string>()))
-            .Do(callInfo =>
-            {
-                var action = callInfo.Arg<Func<CancellationToken, Task>>();
-                var callerName = callInfo.Arg<string>();
-                callback(action, callerName);
-            });
+        _fireAndForgetOnBackgroundThreadHandler = callback;
     }
 
     public Task RunOnUiThread(Action action)
@@ -196,7 +187,7 @@ public class StubIdeScope : IIdeScope, IDisposable
 
     public void UsePhysicalFileSystem()
     {
-        FileSystem = new FileSystemForVs();
+        FileSystem = new Reqnroll.IdeSupport.VisualStudio.FileSystemForVs();
     }
 
     public void Dispose()

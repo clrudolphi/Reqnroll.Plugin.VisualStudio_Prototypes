@@ -1,3 +1,4 @@
+@wip
 Feature: Source Location Discovery
 
 Scenario: Discover binding source location

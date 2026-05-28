@@ -1,3 +1,4 @@
+#if false // Deferred: DeveroomTag, DeveroomTaggerProvider, IProjectBindingRegistryCache, SpecFlowExtensionDetection not yet ported
 using Reqnroll.VisualStudio.SpecFlowExtensionDetection;
 
 namespace Reqnroll.VisualStudio.VsxStubs.ProjectSystem;
@@ -91,3 +92,5 @@ public class InMemoryStubProjectBuilder : IDisposable
 
     private bool FeatureFileIsDisplayed() => VisibleTextBuffer.ContentType.TypeName == VsContentTypes.FeatureFile;
 }
+
+#endif

@@ -1,7 +1,7 @@
 global using ApprovalTests.Namers;
 global using ApprovalTests.Reporters;
 global using ApprovalTests;
-global using FluentAssertions;
+global using AwesomeAssertions;
 global using Gherkin.Ast;
 global using Microsoft.CodeAnalysis.CSharp;
 global using Microsoft.CodeAnalysis;
@@ -11,31 +11,35 @@ global using Microsoft.VisualStudio.Text.Tagging;
 global using Microsoft.VisualStudio.TextManager.Interop;
 global using Microsoft.VisualStudio.Utilities;
 global using NSubstitute;
-global using Reqnroll.VisualStudio.Analytics;
-global using Reqnroll.VisualStudio.Common;
-global using Reqnroll.VisualStudio.Configuration;
-global using Reqnroll.VisualStudio.Diagnostics;
-global using Reqnroll.VisualStudio.Discovery;
-global using Reqnroll.VisualStudio.Discovery.TagExpressions;
-global using Reqnroll.VisualStudio.Editor.Commands.Infrastructure;
-global using Reqnroll.VisualStudio.Editor.Commands;
-global using Reqnroll.VisualStudio.Editor.Services;
-global using Reqnroll.VisualStudio.Editor.Services.Formatting;
-global using Reqnroll.VisualStudio.Editor.Services.Parser;
-global using Reqnroll.VisualStudio.Monitoring;
-global using Reqnroll.VisualStudio.ProjectSystem;
-global using Reqnroll.VisualStudio.ProjectSystem.Configuration;
-global using Reqnroll.VisualStudio.ProjectSystem.Settings;
-global using Reqnroll.VisualStudio.ReqnrollConnector;
-global using Reqnroll.VisualStudio.ReqnrollConnector.Models;
-global using Reqnroll.VisualStudio.Tests.Editor;
-global using Reqnroll.VisualStudio.Tests.Editor.Commands;
-global using Reqnroll.VisualStudio.UI.ViewModels;
+// New Reqnroll.IdeSupport.* namespaces (replacing old Reqnroll.VisualStudio.*)
+global using Reqnroll.IdeSupport.Common;
+global using Reqnroll.IdeSupport.Common.Analytics;
+global using Reqnroll.IdeSupport.Common.Configuration;
+global using Reqnroll.IdeSupport.Common.Diagnostics;
+global using Reqnroll.IdeSupport.Common.ProjectSystem;
+global using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
+global using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
+global using Reqnroll.IdeSupport.LSP.Core.Discovery;
+global using Reqnroll.IdeSupport.LSP.Core.Discovery.TagExpressions;
+global using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+global using Reqnroll.IdeSupport.LSP.Connector.Models;
+// Reqnroll.IdeSupport.VisualStudio.Analytics excluded from global using to avoid ambiguity with Common.Analytics
+// Reqnroll.IdeSupport.VisualStudio.Diagnostics excluded from global using to avoid ambiguity with Common.Diagnostics
+global using Reqnroll.IdeSupport.VisualStudio.Common;
+global using Reqnroll.IdeSupport.VisualStudio.Monitoring;
+global using Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
+// Stubs project namespaces
 global using Reqnroll.VisualStudio.VsxStubs;
 global using Reqnroll.VisualStudio.VsxStubs.ProjectSystem;
-global using Reqnroll.VisualStudio.VsxStubs.StepDefinitions;
+// Old interface alias: IFileSystemForVs -> IFileSystemForIDE
+global using IFileSystemForVs = Reqnroll.IdeSupport.Common.IFileSystemForIDE;
+// Deferred: Reqnroll.VisualStudio.VsxStubs.StepDefinitions (MockableDiscoveryService not yet ported)
+// Deferred: Reqnroll.VisualStudio.UI.ViewModels (UI not yet ported)
+// Deferred: Reqnroll.VisualStudio.Editor.* (editor commands/services not yet ported)
+// BCL
 global using System;
 global using System.Collections.Concurrent;
+global using System.Collections.Generic;
 global using System.Collections.Immutable;
 global using System.Diagnostics;
 global using System.IO.Abstractions;
@@ -43,7 +47,9 @@ global using System.IO.Abstractions.TestingHelpers;
 global using System.Linq;
 global using System.Reflection;
 global using System.Runtime.CompilerServices;
-global using System.Text.RegularExpressions;
 global using System.Text;
+global using System.Text.RegularExpressions;
+global using System.Threading;
+global using System.Threading.Tasks;
 global using Xunit.Abstractions;
 global using Xunit;

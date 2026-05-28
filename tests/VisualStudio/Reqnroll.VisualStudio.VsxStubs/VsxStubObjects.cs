@@ -75,6 +75,8 @@ public class VsxStubObjects
 
     public static void Initialize()
     {
+        if (GuardedOperations != null) return;
+
         GuardedOperations =
             CreateObject<object>(
                 "Microsoft.VisualStudio.Text.Utilities.GuardedOperations, Microsoft.VisualStudio.Platform.VSEditor");

@@ -15,10 +15,10 @@ public class StubProjectScope : IProjectScope
         _packageReferences = new List<NuGetPackageReference>(packageReferences);
 
         TargetFrameworkMoniker =
-            VisualStudio.ProjectSystem.TargetFrameworkMoniker.CreateFromShortName(targetFramework).Value;
+            Reqnroll.IdeSupport.Common.ProjectSystem.TargetFrameworkMoniker.CreateFromShortName(targetFramework).Value;
     }
 
-    public PropertyCollection Properties { get; } = new();
+    public ConcurrentDictionary<Type, object> Properties { get; } = new();
     public IIdeScope IdeScope { get; }
     public IEnumerable<NuGetPackageReference> PackageReferences => _packageReferences;
     public string ProjectFolder { get; }

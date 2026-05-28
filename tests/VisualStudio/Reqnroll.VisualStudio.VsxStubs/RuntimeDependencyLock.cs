@@ -1,33 +1,13 @@
 using System;
 using System.Linq;
-using Microsoft.VisualStudio.Platform.VSEditor;
-using Microsoft.VisualStudio.Text.Internal.Language;
+// Deferred: Microsoft.VisualStudio.Platform.VSEditor and Microsoft.VisualStudio.Text.Internal
+// are not available with the current VS SDK references.
+// using Microsoft.VisualStudio.Platform.VSEditor;
+// using Microsoft.VisualStudio.Text.Internal.Language;
 
 namespace Reqnroll.VisualStudio.VsxStubs;
 
 public class RuntimeDependencyLock
 {
-    internal class MicrosoftVisualStudioPlatformVsEditor
-    {
-        private static void Dummy()
-        {
-            Noop(typeof(SnapshotSpanEventArgsHelper));
-        }
-
-        private static void Noop(Type _)
-        {
-        }
-    }
-
-    internal class MicrosoftVisualStudioTextInternal
-    {
-        private static void Dummy()
-        {
-            Noop(typeof(CompletionPresenterStylePrivate));
-        }
-
-        private static void Noop(Type _)
-        {
-        }
-    }
+    // Deferred: sentinel classes for VSEditor and TextInternal removed until assemblies are available
 }

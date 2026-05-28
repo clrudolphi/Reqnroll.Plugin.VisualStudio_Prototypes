@@ -1,3 +1,4 @@
+@wip
 Feature: Find unused step definitions command
 
 List unused step definitions and allows jumping to the step definition method

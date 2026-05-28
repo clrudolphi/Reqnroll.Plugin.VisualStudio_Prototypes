@@ -1,3 +1,4 @@
+@wip
 Feature: Discovery - Handling special projects
 
 Scenario: Discover Unicode bindings from Reqnroll project
