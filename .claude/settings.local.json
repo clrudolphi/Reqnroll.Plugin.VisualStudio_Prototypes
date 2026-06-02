@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcp-registry__search_mcp_registry",
+      "PowerShell(Get-Command node, npx, npm -ErrorAction SilentlyContinue)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\clrud\\\\source\\\\repos\\\\scratch\\\\Reqnroll.IdeSupport\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(xargs grep -l \"architecture\\\\|architecture\\\\|design\\\\|overview\")",
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\clrud\\\\source\\\\repos\\\\ThomasHeijtink\\\\Reqnroll.LSP.Plugin\\\\Reqnroll.Plugin.VsCode\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(ls \"C:\\\\Users\\\\clrud\\\\AppData\\\\Roaming\\\\Claude\\\\ant-did\")"
+    ]
+  }
+}
