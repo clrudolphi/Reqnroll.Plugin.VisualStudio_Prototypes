@@ -30,6 +30,23 @@ public static class LspClientExtensions
                 new TextDocumentContentChangeEvent { Text = text })
         });
 
+    /// <summary>Opens a C# document (languageId <c>csharp</c>), used to drive Roslyn binding discovery.</summary>
+    public static void OpenCSharpDocument(this ILanguageClient client, DocumentUri uri, int version, string text)
+        => client.SendNotification("textDocument/didOpen", new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = uri,
+                Version = version,
+                LanguageId = "csharp",
+                Text = text
+            }
+        });
+
+    /// <summary>Changes a C# document with the full updated text (full-sync), driving re-discovery.</summary>
+    public static void ChangeCSharpDocument(this ILanguageClient client, DocumentUri uri, int version, string text)
+        => client.ChangeDocument(uri, version, text);
+
     public static void CloseDocument(this ILanguageClient client, DocumentUri uri)
         => client.SendNotification("textDocument/didClose", new DidCloseTextDocumentParams
         {

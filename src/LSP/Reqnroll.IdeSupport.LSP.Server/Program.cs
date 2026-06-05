@@ -109,6 +109,8 @@ public class Program
                // each feature file is resolved against only its own project's bindings.
                .AddSingleton<BindingRegistryProviderRouter>()
                .AddSingleton<IProjectBindingRegistryLookup>(sp => sp.GetRequiredService<BindingRegistryProviderRouter>())
+               // Roslyn (source-level) binding discovery for .cs edits (design doc F2).
+               .AddSingleton<ICSharpBindingDiscoveryService, CSharpBindingDiscoveryService>()
                .AddSingleton<IDeveroomTagParser, DeveroomTagParser>()
                .AddSingleton<IDocumentBufferService, DocumentBufferService>()
                // BindingMatchService holds the per-document match cache; it must be a singleton

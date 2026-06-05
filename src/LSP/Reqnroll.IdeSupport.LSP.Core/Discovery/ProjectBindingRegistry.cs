@@ -2,6 +2,7 @@ using Gherkin.Ast;
 using Reqnroll.IdeSupport.LSP.Connector.Models;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -231,7 +232,47 @@ public record ProjectBindingRegistry
     {
         var stepDefinitionParser = new StepDefinitionFileParser();
         var projectStepDefinitionBindings = await stepDefinitionParser.Parse(stepDefinitionFile);
-        return Where(binding => binding.Implementation.SourceLocation?.SourceFile != stepDefinitionFile.FullName)
+        return Where(binding => !IsSameSourceFile(binding.Implementation.SourceLocation?.SourceFile, stepDefinitionFile.FullName))
             .WithStepDefinitions(projectStepDefinitionBindings);
+    }
+
+    /// <summary>
+    /// Replaces all step definitions and hooks originating from the given C# source file with
+    /// freshly discovered ones, leaving bindings from other files untouched. This is the
+    /// per-file replacement used by Roslyn-based (source-level) discovery (design doc F2).
+    /// </summary>
+    public async Task<ProjectBindingRegistry> ReplaceBindings(CSharpStepDefinitionFile stepDefinitionFile)
+    {
+        var stepDefinitionParser = new StepDefinitionFileParser();
+        var parsed = await stepDefinitionParser.ParseBindings(stepDefinitionFile);
+
+        bool FromOtherFile(ProjectBinding binding) =>
+            !IsSameSourceFile(binding.Implementation.SourceLocation?.SourceFile, stepDefinitionFile.FullName);
+
+        return new ProjectBindingRegistry(
+            StepDefinitions.Where(FromOtherFile).Concat(parsed.StepDefinitions),
+            Hooks.Where(FromOtherFile).Concat(parsed.Hooks));
+    }
+
+    /// <summary>
+    /// Compares two source-file paths for identity. The comparison normalizes the paths and is
+    /// case-insensitive: the reflection connector records source paths from the PDB (often with an
+    /// upper-case drive letter), while Roslyn discovery derives them from an LSP document URI (which
+    /// can carry a lower-case drive letter). A case-sensitive compare would treat those as different
+    /// files and fail to replace a file's previous bindings, leaving a stale binding behind.
+    /// </summary>
+    internal static bool IsSameSourceFile(string? sourceFile, string targetFullName)
+    {
+        if (string.IsNullOrEmpty(sourceFile) || string.IsNullOrEmpty(targetFullName))
+            return false;
+
+        return string.Equals(NormalizePath(sourceFile!), NormalizePath(targetFullName),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        try { return Path.GetFullPath(path); }
+        catch { return path; }
     }
 }

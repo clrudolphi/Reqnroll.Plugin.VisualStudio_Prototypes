@@ -26,7 +26,8 @@
       "mcp__854f8b49-9c69-48f2-a8e3-0f83cb47b63c__microsoft_docs_search",
       "mcp__854f8b49-9c69-48f2-a8e3-0f83cb47b63c__microsoft_docs_fetch",
       "Bash(find \"/c/Program Files/Microsoft Visual Studio\" -iname \"Microsoft.VisualStudio.LanguageServer.Client*.dll\" 2>/dev/null | head; echo \"=== NUGET ===\"; find ~/.nuget/packages -iname \"Microsoft.VisualStudio.LanguageServer.Client.dll\" 2>/dev/null | head)",
-      "Bash(grep -iv \"//\")"
+      "Bash(grep -iv \"//\")",
+      "Bash(cd /c/Users/clrud/AppData/Local/Reqnroll && ls -la *.log | tail -20; echo \"=== sizes ===\"; wc -l lsp-inspector-20260604-160559.log reqnroll-vs-debug-20260604.log)"
     ]
   }
 }

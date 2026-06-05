@@ -109,6 +109,62 @@ public class ConnectorBindingRegistryProviderTests : IDisposable
         _discovery.ReceivedWithAnyArgs(1).RunDiscovery(default!, default!, default!, default);
     }
 
+    // ── Roslyn source-level patch (F2) ───────────────────────────────────────────
+
+    [Fact]
+    public async Task ApplyRoslynFileUpdate_patches_current_registry_and_raises_event()
+    {
+        var sut = CreateSut();
+        var changed = new TaskCompletionSource();
+        sut.BindingRegistryChanged += (_, _) => changed.TrySetResult();
+
+        var file = FileDetailsFor("Steps.cs", @"
+namespace S
+{
+    [Reqnroll.Binding]
+    public class Steps
+    {
+        [Reqnroll.Given(""the first number is (.*)"")]
+        public void Method(int n) { }
+    }
+}");
+
+        await sut.ApplyRoslynFileUpdateAsync(file);
+
+        (await Task.WhenAny(changed.Task, Task.Delay(2000)))
+            .Should().BeSameAs(changed.Task, "the source-level update should raise BindingRegistryChanged");
+        sut.Current.Should().NotBeSameAs(ProjectBindingRegistry.Invalid);
+        sut.Current.StepDefinitions.Should().ContainSingle()
+            .Which.Regex!.ToString().Should().Be("^the first number is (.*)$");
+    }
+
+    [Fact]
+    public async Task ApplyRoslynFileUpdate_replaces_only_that_files_bindings()
+    {
+        var sut = CreateSut();
+
+        var first = FileDetailsFor("A.cs",
+            "namespace S { [Reqnroll.Binding] class A { [Reqnroll.Given(\"a\")] void M(){} } }");
+        var second = FileDetailsFor("B.cs",
+            "namespace S { [Reqnroll.Binding] class B { [Reqnroll.Given(\"b\")] void M(){} } }");
+
+        await sut.ApplyRoslynFileUpdateAsync(first);
+        await sut.ApplyRoslynFileUpdateAsync(second);
+
+        // Editing B.cs again must keep A.cs's binding and replace only B.cs's.
+        var secondEdited = FileDetailsFor("B.cs",
+            "namespace S { [Reqnroll.Binding] class B { [Reqnroll.Given(\"b2\")] void M(){} } }");
+        await sut.ApplyRoslynFileUpdateAsync(secondEdited);
+
+        sut.Current.StepDefinitions.Select(s => s.Expression)
+            .Should().BeEquivalentTo(new[] { "a", "b2" });
+    }
+
+    private CSharpStepDefinitionFile FileDetailsFor(string fileName, string content) =>
+        Reqnroll.IdeSupport.Common.FileDetails
+            .FromPath(Path.Combine(_folder, fileName))
+            .WithCSharpContent(content);
+
     // ── Dispose ──────────────────────────────────────────────────────────────────
 
     [Fact]

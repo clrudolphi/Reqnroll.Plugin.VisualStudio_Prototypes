@@ -100,6 +100,26 @@ public sealed class ConnectorBindingRegistryProvider : IBindingRegistryProvider,
         _ = Task.Run(() => RunDiscoveryAsync(newCts.Token), newCts.Token);
     }
 
+    /// <summary>
+    /// Applies an immediate, source-level (Roslyn) binding update for a single C# file on top of
+    /// the current registry, replacing only that file's step definitions and hooks (design doc F2).
+    /// </summary>
+    /// <remarks>
+    /// This is the in-process counterpart to the out-of-process reflection connector: it gives
+    /// instant feedback as the user edits a step-definition file, without waiting for a build.
+    /// The patch is layered on top of <see cref="Current"/> and intentionally does <b>not</b>
+    /// advance the connector's last-good hash, so the next successful connector run (after a real
+    /// build, whose assembly hash differs) replaces the whole registry with the authoritative
+    /// post-build result. If no build has happened, the connector run is a hash-match no-op and
+    /// the Roslyn patch survives.
+    /// </remarks>
+    public async Task ApplyRoslynFileUpdateAsync(CSharpStepDefinitionFile file)
+    {
+        var updated = await _current.ReplaceBindings(file).ConfigureAwait(false);
+        _current = updated;
+        _bindingRegistryChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     // ── IDisposable ───────────────────────────────────────────────────────────
 
     public void Dispose()

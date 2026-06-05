@@ -3,6 +3,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
+using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
@@ -14,13 +15,15 @@ public class TextDocumentSyncHandlerTests
     private readonly IDocumentBufferService _bufferService = new DocumentBufferService();
     private readonly IGherkinDocumentTaggerService _taggerService = Substitute.For<IGherkinDocumentTaggerService>();
     private readonly IBindingMatchService _bindingMatchService = Substitute.For<IBindingMatchService>();
+    private readonly ICSharpBindingDiscoveryService _csharpDiscoveryService = Substitute.For<ICSharpBindingDiscoveryService>();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
     private readonly IDeveroomLogger _logger = Substitute.For<IDeveroomLogger>();
 
     private static readonly DocumentUri FeatureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
+    private static readonly DocumentUri CsUri = DocumentUri.FromFileSystemPath("/workspace/Steps.cs");
 
     private TextDocumentSyncHandler CreateSut() =>
-        new(_bufferService, _taggerService, _bindingMatchService, _mediator, _logger);
+        new(_bufferService, _taggerService, _bindingMatchService, _csharpDiscoveryService, _mediator, _logger);
 
     [Fact]
     public async Task Handle_DidOpen_stores_document_and_publishes_match_cache_changed_notification()
@@ -138,6 +141,67 @@ public class TextDocumentSyncHandlerTests
         _bindingMatchService.Received(1).Invalidate(FeatureUri.ToString());
 
         await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_DidOpen_for_cs_file_routes_to_roslyn_discovery_and_skips_gherkin_buffer()
+    {
+        const string source = "namespace S { [Reqnroll.Binding] class C { } }";
+        var sut = CreateSut();
+        var request = new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
+            {
+                Uri = CsUri,
+                Version = 1,
+                Text = source,
+                LanguageId = "csharp"
+            }
+        };
+
+        var result = await sut.Handle(request, CancellationToken.None);
+
+        result.Should().Be(Unit.Value);
+        // .cs files are not parsed into the Gherkin document buffer.
+        _bufferService.TryGet(CsUri, out _).Should().BeFalse();
+        await _csharpDiscoveryService.Received(1)
+            .UpdateFromSourceAsync(CsUri, source, Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_DidChange_for_cs_file_routes_full_text_to_roslyn_discovery()
+    {
+        const string source = "namespace S { [Reqnroll.Binding] class C { [Reqnroll.Given(\"x\")] void M(){} } }";
+        var sut = CreateSut();
+        var request = new DidChangeTextDocumentParams
+        {
+            TextDocument = new OptionalVersionedTextDocumentIdentifier { Uri = CsUri, Version = 2 },
+            ContentChanges = new Container<TextDocumentContentChangeEvent>(
+                new TextDocumentContentChangeEvent { Text = source })
+        };
+
+        await sut.Handle(request, CancellationToken.None);
+
+        await _csharpDiscoveryService.Received(1)
+            .UpdateFromSourceAsync(CsUri, source, Arg.Any<CancellationToken>());
+        _bufferService.TryGet(CsUri, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_DidClose_for_cs_file_is_a_noop()
+    {
+        var sut = CreateSut();
+        var request = new DidCloseTextDocumentParams
+        {
+            TextDocument = new TextDocumentIdentifier { Uri = CsUri }
+        };
+
+        var result = await sut.Handle(request, CancellationToken.None);
+
+        result.Should().Be(Unit.Value);
+        // Closing a .cs file must not invalidate feature match state; bindings are retained until rebuild.
+        _bindingMatchService.DidNotReceiveWithAnyArgs().Invalidate(default!);
     }
 
     [Fact]

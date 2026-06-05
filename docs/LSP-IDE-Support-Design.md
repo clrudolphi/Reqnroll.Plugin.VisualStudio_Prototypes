@@ -257,9 +257,11 @@ The server accepts a `--client <ide>` command-line flag at startup (e.g., `--cli
 
 The server registers interest in both `*.feature` files and `*.cs` files. It does not act as a general-purpose C# language server; its interest in `*.cs` files is limited to:
 
-- Receiving `textDocument/didChange` to trigger Roslyn-based binding re-discovery
+- Receiving `textDocument/didOpen` / `didChange` to trigger Roslyn-based binding re-discovery
 - Providing `textDocument/references` (step usages, from a C# binding method)
 - Providing `textDocument/codeLens` (usage counts on binding attributes)
+
+> **As-built note**: `.cs` interest for binding re-discovery is implemented (see [F2 · Implementation status](#f2--binding-discovery)). A single OmniSharp text-document sync handler (`TextDocumentSyncHandler`) registers a document selector covering **both** `**/*.feature` and `**/*.cs` and routes by file extension, rather than a separate `CsSyncHandler` — this avoids OmniSharp's ambiguity when two `TextDocumentSyncHandlerBase` implementations claim overlapping documents. `.cs` files are deliberately **not** stored in the Gherkin document buffer.
 
 ### Workspace Model
 
@@ -313,10 +315,12 @@ This means the Protocol Handler is responsible for the initial synchronous state
 
 **Key protocol handler classes** (one per LSP capability group):
 
+> **As-built note**: the class names below are the design's idealized handler-per-capability names; several are currently implemented under consolidated names (e.g. the two sync rows below are both served by a single `TextDocumentSyncHandler`; semantic tokens by `SemanticTokensHandler`).
+
 | Class | LSP messages handled |
 |-------|---------------------|
-| `FeatureSyncHandler` | `textDocument/didOpen`, `didChange`, `didClose` (`.feature`) |
-| `CsSyncHandler` | `textDocument/didOpen`, `didChange` (`.cs`) |
+| `FeatureSyncHandler` *(as-built: `TextDocumentSyncHandler`)* | `textDocument/didOpen`, `didChange`, `didClose` (`.feature`) |
+| `CsSyncHandler` *(as-built: same `TextDocumentSyncHandler`, routed by `.cs` extension)* | `textDocument/didOpen`, `didChange` (`.cs`) |
 | `WorkspaceFilesHandler` | `workspace/didChangeWatchedFiles` |
 | `FeatureSemanticTokensHandler` | `textDocument/semanticTokens/full`, `/delta` |
 | `FeatureDefinitionHandler` | `textDocument/definition` (from `.feature` cursors) |
@@ -339,6 +343,8 @@ This means the Protocol Handler is responsible for the initial synchronous state
 | `CsFileChangedNotification` | `CsSyncHandler` | `RoslynDiscoveryInternalHandler` |
 | `BindingRegistryChangedNotification` | `RoslynDiscoveryInternalHandler`, `ReflectionDiscoveryInternalHandler` | `BindingMatchInternalHandler` |
 | `MatchCacheChangedNotification` | `BindingMatchInternalHandler` | `DiagnosticsInternalHandler` |
+
+> **As-built note (C# / Roslyn path)**: the implemented flow does not use a dedicated `CsFileChangedNotification` / `RoslynDiscoveryInternalHandler`. Instead, on a `.cs` `didOpen`/`didChange` the sync handler calls `ICSharpBindingDiscoveryService` directly; that service patches the owning project's `ConnectorBindingRegistryProvider` (which raises its `BindingRegistryChanged` event), and `BindingRegistryProviderRouter` publishes the existing `BindingRegistryChangedNotification`. From there the established re-match path runs (`BindingRegistryChangedHandler` → re-parse open feature files → `MatchCacheChangedNotification` → semantic-token refresh). The reflection (post-build) discovery raises the same `BindingRegistryChangedNotification`, so both discovery sources converge on one re-match path.
 
 ---
 
@@ -1071,6 +1077,31 @@ sequenceDiagram
     BR-->>BR: [internal] BindingRegistryChangedNotification
     BR-->>IDE: textDocument/publishDiagnostics (all open feature files)
 ```
+
+#### Implementation status
+
+The Roslyn (source-level) path is **implemented**. The diagram above uses idealized component names; the as-built mapping is:
+
+| Design element | As-built |
+|---|---|
+| `CsSyncHandler` receives `.cs` `didOpen`/`didChange` | `TextDocumentSyncHandler` (one sync handler for `.feature` + `.cs`, routed by extension) |
+| Roslyn Discovery — scan / parse a `.cs` file | `StepDefinitionFileParser` (syntactic; discovers step definitions **and** hooks, with scopes) invoked via `ProjectBindingRegistry.ReplaceBindings(file)` |
+| "Replace bindings for that file" | `ICSharpBindingDiscoveryService` → `ConnectorBindingRegistryProvider.ApplyRoslynFileUpdateAsync` (per-file replace layered on the current registry) |
+| `BindingRegistryChangedNotification` | raised by the provider's `BindingRegistryChanged` event via `BindingRegistryProviderRouter`; consumed by `BindingRegistryChangedHandler`, which re-parses open feature files and refreshes semantic tokens |
+
+**Merge / precedence**: the Roslyn patch is layered on top of the connector's current registry and intentionally does **not** advance the connector's last-good assembly hash. A real build (different assembly hash) therefore fully replaces the registry with the authoritative reflection result; with no rebuild, the connector run is a hash-match no-op and the source-level patch persists. This realizes the merge strategy described in [§7](#7-binding-connector).
+
+**Behavioural nuance**: a step renders as *unbound* (a `reqnroll.undefined_step` token / "step definition not found" diagnostic) only once the owning project has a **valid** (non-`Invalid`) registry — i.e. after any discovery has completed, whether the startup reflection run **or** the first Roslyn `.cs` open. Against an `Invalid` registry (no discovery yet) the tag parser skips step matching, leaving steps unclassified rather than unbound.
+
+The reflection (post-build) trigger shown in the lower half of the diagram is also implemented: `WatchedFilesHandler` registers `workspace/didChangeWatchedFiles` watchers for `**/bin/**/*.dll` (and `**/reqnroll.json`) and calls `ConnectorBindingRegistryProvider.TriggerRefresh()` for the project whose output path matches. An initial run is likewise triggered on `reqnroll/projectLoaded`. Whether each IDE reliably *delivers* those watched-file events on build remains [Q9](#10-open-questions).
+
+#### Known limitations
+
+**Custom-derived binding attributes are not discovered by Roslyn (source-level) discovery.** The in-process Roslyn parser (`StepDefinitionFileParser`) is intentionally *syntactic only* — it parses a single `.cs` file into a syntax tree with no `Compilation` or semantic model — and recognizes bindings by matching the attribute's simple name against the known Reqnroll attribute names (`Given`/`When`/`Then`/`StepDefinition` and the hook attributes, allowing for namespace qualification and the `Attribute` suffix). A user-defined attribute that *derives* from a Reqnroll binding attribute (e.g. `class GivenWebAttribute : GivenAttribute`) is therefore **not** detected by the immediate-on-save Roslyn path, because resolving the inheritance chain would require a semantic model with the project's references.
+
+Such bindings are still discovered by the out-of-process reflection **Connector** after a build, since reflection inspects the actual attribute type hierarchy. The practical effect is that a step bound via a custom-derived attribute will appear unmatched (warning squiggle) until the next build, after which it resolves normally.
+
+We are **not** addressing this at this time. Closing the gap would mean feeding the Roslyn parser a project `Compilation` (Reqnroll + project references) and walking `INamedTypeSymbol.BaseType`, which is a larger change to how `CSharpBindingDiscoveryService` obtains source — it currently parses each `.cs` file in isolation. The limitation is captured by a skipped test in `StepDefinitionFileParserTests`.
 
 ---
 
