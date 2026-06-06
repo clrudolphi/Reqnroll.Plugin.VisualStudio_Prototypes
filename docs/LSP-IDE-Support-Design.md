@@ -32,6 +32,7 @@
 10. [Open Questions](#10-open-questions)
 11. [Alternatives Considered](#11-alternatives-considered)
 12. [Risk Register](#12-risk-register)
+13. [Non-Feature Engineering Tasks](#13-non-feature-engineering-tasks)
 
 **Appendices**
 
@@ -55,6 +56,7 @@
    - [F17 · Hook Navigation](#f17--hook-navigation)
    - [F18 · Code Lens (Step Usage Counts)](#f18--code-lens-step-usage-counts)
    - [F19 · New Project / Item Wizards](#f19--new-project--item-wizards)
+   - [F20 · Installation & Upgrade Experience](#f20--installation--upgrade-experience)
 - [Appendix B · Deferred / Future Features](#appendix-b--deferred--future-features)
 
 ---
@@ -567,7 +569,7 @@ In-process (LSP.Core)                Out-of-process
 |-------|----------|------------------|
 | **1 · Basic Syntax Coloring** | F1 (Semantic Tokens) | Architecture validated: LSP server startup, client wiring (all 3 IDEs), `--client` flag, static vs. dynamic registration, CI pipeline |
 | **2 · Minimum Viable** | F2 (Binding Discovery), F3+F4 (Diagnostics), F5 (Go to Definition), F6 (Define Steps), F19 (Wizards) | Core value loop: developer can write feature files, get feedback on unmatched steps, navigate to or create bindings; VS wizard enables quick project setup |
-| **3 · Editor Quality** | F7 (Keyword Completion), F9 (Outline), F10 (Folding), F11 (Formatting), F12 (Table Format), F13 (Comment/Uncomment), F17 (Hook Navigation) | Extension is a credible replacement for daily use |
+| **3 · Editor Quality** | F7 (Keyword Completion), F9 (Outline), F10 (Folding), F11 (Formatting), F12 (Table Format), F13 (Comment/Uncomment), F17 (Hook Navigation), F20 (Install/Upgrade UX) | Extension is a credible replacement for daily use |
 | **4 · Advanced Navigation** | F8 (Step Completion), F14 (Find Usages), F15 (Find Unused), F16 (Rename), F18 (Code Lens) | Feature parity with existing VS extension; Preview designation can be lifted |
 
 ---
@@ -590,6 +592,28 @@ The following latency targets apply at **P95** (the 95th-percentile: 95% of requ
 | Initial workspace scan — cold start | < 30 s |
 
 > **Note**: These are design targets, not contractual SLAs. Benchmarks should be established in Phase 1 (against the F1 integration spec) and revisited as the feature set grows.
+
+### Performance Verification
+
+The latency targets above are only meaningful if there is a defined mechanism to confirm them. Two distinct shapes of target need different verification:
+
+- **Interactive round-trips** (`semanticTokens/full`, `completion`, `definition`, `publishDiagnostics`) are phrased *"from last `didChange` event"* — i.e. measured **end-to-end at the protocol boundary**, including JSON-RPC serialization, transport, and the MediatR fan-out. Timing a service method in isolation undercounts them.
+- **Batch / throughput operations** (Roslyn re-discovery, reflection discovery, cold-start scan) are coarse enough to confirm with wall-clock timing.
+
+A second axis is *where* assertions run. The targets are **absolute** numbers on representative hardware, but shared CI runners are too noisy to assert absolute thresholds reliably — CI is suited to **relative regression** detection, not absolute pass/fail.
+
+Several verification options were considered, organized as layers:
+
+| Layer | Approach | Confirms | Decision |
+|---|---|---|---|
+| 1 | **Service-level micro-benchmarks** (BenchmarkDotNet over `LSP.Core` services: parser, matcher, completion) | Algorithmic/compute cost; regression detection | Considered; not adopted initially (compute cost is captured indirectly by Layer 2; revisit if a hot path needs isolation) |
+| 2 | **End-to-end protocol benchmarks** — a real server driven by a simulated LSP client over its actual transport, against a pinned representative corpus, reporting per-operation percentiles | The interactive P95 targets *and* the batch targets (cold start, discovery) as phrased | **Will implement** |
+| 3 | **CI regression tracking** — run a benchmark suite per-PR on a fixed runner, gate on regression % vs. a stored baseline | Prevents gradual perf creep | Considered; deferred (depends on Layer 2 harness existing first) |
+| 4 | **Field instrumentation** — protocol handlers record their own durations and emit them via the existing logging path (and optionally as a telemetry metric), yielding real-world P95 from actual user workspaces | Real-world performance on real hardware/workspaces, where the "typical hardware" assumption is actually exercised | **Will implement** |
+
+**Adopted approach: Layers 2 and 4.** Layer 2 provides reproducible confirmation of the design targets against a controlled workload; Layer 4 validates that those targets hold in the field, where synthetic corpora cannot. Layer 2 absolute thresholds are asserted on a designated reference machine (not shared CI runners). Layers 1 and 3 remain available to adopt later — Layer 3 in particular becomes cheap once the Layer 2 harness exists.
+
+Layer 2 requires two artifacts that do not yet exist — a benchmarking harness and a pinned representative corpus matching the §9 "typical workspace conditions" (≤500 `.feature` files, ≤2,000 binding patterns). Building these is tracked as non-feature engineering work — see [§13 Non-Feature Engineering Tasks](#13-non-feature-engineering-tasks) (T1, T2).
 
 ### Telemetry
 
@@ -759,7 +783,7 @@ Each uses a distinct marketplace identifier, coexisting with the existing `Reqnr
 **Coexistence**: The existing `Reqnroll.VisualStudio` extension continues unchanged throughout the Preview period. Both extensions can be installed simultaneously in Visual Studio without conflict (they use different GUIDs and do not share any in-process components).
 
 **Transition trigger**: The Preview designation is lifted and the new extension is promoted as the recommended extension when:
-- Phase 4 parity is achieved (all F1–F19 features passing)
+- Phase 4 parity is achieved (all F1–F20 features passing)
 - The E2E test suite passes against the supported IDE versions
 - The new extension has been in Preview use by the core team for at least one release cycle
 
@@ -879,6 +903,18 @@ This section records key architectural decisions and the alternatives that were 
 | R8 | Reflection Discovery interrupted by test runner locking the output assembly | Medium | Build-triggered registry update silently fails | Graceful degradation: retain last valid registry, notify user via `window/showMessage` (see §9 Error Handling) |
 | R9 | Gherkin dialect must be resolved before the first `textDocument/didOpen` is processed | Low | Wrong keyword tokens / completions for non-English projects | Config Loader runs as part of workspace initialization, before the first feature file handler fires |
 | R10 | `Reqnroll.LSP.Plugin` PoC patterns diverge from production requirements as design matures | Low | Wasted or conflicting PoC reference | PoC is reference-only; this design document supersedes it wherever they conflict |
+
+---
+
+## 13. Non-Feature Engineering Tasks
+
+This section tracks engineering work that is **not** an end-user feature (F1–F20) but is required to support development, verification, or operation of the project. Unlike the [Open Questions](#10-open-questions) (which are decisions to be made), these are agreed work items awaiting scheduling.
+
+| # | Task | Related to | Status |
+|---|------|-----------|--------|
+| T1 | **Performance benchmarking harness** — a console/test harness that launches a real LSP server, drives it through a simulated client over its actual transport, and reports per-operation latency percentiles against the §9 targets (Performance Verification, Layer 2). Asserts absolute thresholds on a designated reference machine. | [§9 Performance Verification](#performance-verification) | Open |
+| T2 | **Representative benchmark corpus** — a pinned, versioned set of `.feature` files and binding patterns matching the §9 "typical workspace conditions" (≤500 feature files, ≤2,000 binding patterns), used as the controlled workload for T1. Includes a generator or curation script so the corpus is reproducible. | [§9 Performance Verification](#performance-verification) | Open |
+| T3 | **Field performance instrumentation** — wrap protocol handlers to record their own durations and emit them via the existing logging path (and optionally as a telemetry metric), for real-world P95 measurement (Performance Verification, Layer 4). | [§9 Performance Verification](#performance-verification), [§9 Telemetry](#telemetry) | Open |
 
 ---
 
@@ -1969,6 +2005,38 @@ None — wizards are entirely IDE-side. No LSP involvement.
 - Uses `IVsProjectWizard` / `IWizard` VSSDK interfaces
 - Wizard UI is WPF; shared with the existing Reqnroll.VisualStudio extension where possible
 - VS.Extensibility does not expose a wizard API; VSSDK is the only option here
+
+---
+
+### F20 · Installation & Upgrade Experience
+
+**Phase 3**
+
+#### End-user experience
+
+When the extension is installed for the first time, the user is greeted with a **welcome experience** (e.g., a getting-started page linking to documentation, the marketplace listing, and a quick tour of features). When the extension is **upgraded** to a new version, the user is shown a **"What's New"** experience summarizing notable changes since their previous version. These experiences make the Preview extension's value discoverable and signal active maintenance — important during the transition period while the existing `Reqnroll.VisualStudio` extension is still available.
+
+For Visual Studio, the existing extension's installation and upgrade UX (welcome / what's-new pages and any first-run setup) is **ported** rather than rebuilt — the existing WPF UI and the version-detection logic that distinguishes a fresh install from an upgrade are reused.
+
+#### IDE support matrix
+
+| VS Code | Visual Studio | Rider |
+|---------|---------------|-------|
+| ⚠️ Config (walkthrough / release notes) | 🔧 Plugin (ported from existing extension) | ⚠️ Config (plugin "What's New") |
+
+- **Visual Studio**: Port the existing extension's welcome / what's-new experience and first-run/upgrade detection. WPF UI shared with the existing `Reqnroll.VisualStudio` extension where possible.
+- **VS Code**: Use the native [Walkthroughs](https://code.visualstudio.com/api/references/contribution-points#contributes.walkthroughs) contribution point for the getting-started experience and the marketplace's built-in release-notes (`CHANGELOG.md`) surface for upgrades — no custom UI required.
+- **Rider**: Use the IntelliJ Platform plugin "What's New" / change-notes mechanism declared in `plugin.xml`.
+
+#### LSP messages
+
+None directly — installation and upgrade UX is entirely IDE-side. However, the **first-activation** and **version-change** moments are the natural producers of the `ExtensionInstalled` and `ExtensionUpgraded` telemetry events (see [§9 Telemetry](#telemetry)). Because these events fire before or independently of the LSP server, the telemetry-architecture choice (Q11) and the client-reference question (Q8) directly affect how they are captured.
+
+#### Notes
+
+- Detecting install-vs-upgrade requires persisting the last-run version per IDE (e.g., extension storage / settings). The existing VS extension already implements this; reuse its approach.
+- Each IDE client is responsible for its own install/upgrade UX; there is no shared cross-IDE implementation, though the telemetry event names are common.
+- This feature is the primary in-product driver of the `ExtensionInstalled` / `ExtensionUpgraded` / `ExtensionDaysOfUsage` events listed in §9 Telemetry.
 
 ---
 
