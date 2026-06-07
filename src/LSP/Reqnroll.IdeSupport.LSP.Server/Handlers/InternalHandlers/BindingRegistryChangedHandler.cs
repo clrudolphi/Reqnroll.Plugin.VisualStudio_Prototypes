@@ -3,6 +3,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
 
@@ -15,33 +16,37 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
 /// <remarks>
 /// <para>
 /// When <see cref="BindingRegistryChangedNotification.IsFullReplacement"/> is
-/// <see langword="true"/> (startup or post-build connector run), all feature files under the
-/// project folder are scanned — including files not currently open in the editor — so that the
-/// binding match cache is workspace-complete for F14 Find Usages and F18 Code Lens.
-/// Closed-file scan entries are stored in <see cref="IBindingMatchService"/> only (not in the
-/// document buffer); open-file semantics are unaffected.
+/// <see langword="true"/> (startup, post-build connector run, or membership-baseline arrival),
+/// all feature files owned by the project are scanned — including files not currently open
+/// in the editor — so that the binding match cache is workspace-complete for F14 Find Usages.
+/// The file list is obtained from the membership index (I1) when a baseline has been received;
+/// otherwise it falls back to a folder glob for backwards compatibility with clients that do
+/// not send <c>reqnroll/projectFiles</c>.
 /// </para>
 /// <para>
 /// When <see cref="BindingRegistryChangedNotification.IsFullReplacement"/> is
 /// <see langword="false"/> (incremental Roslyn per-file patch on a <c>.cs</c> edit), only the
-/// currently open feature files are re-parsed, keeping the hot path cheap.
+/// currently open feature files owned by the project are re-parsed.
 /// </para>
 /// </remarks>
 public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistryChangedNotification>
 {
     private readonly IDocumentBufferService        _documentBufferService;
     private readonly IGherkinDocumentTaggerService  _taggerService;
+    private readonly ILspWorkspaceScopeManager     _scopeManager;
     private readonly IMediator                     _mediator;
     private readonly IDeveroomLogger                _logger;
 
     public BindingRegistryChangedHandler(
         IDocumentBufferService documentBufferService,
         IGherkinDocumentTaggerService taggerService,
+        ILspWorkspaceScopeManager scopeManager,
         IMediator mediator,
         IDeveroomLogger logger)
     {
         _documentBufferService = documentBufferService;
         _taggerService         = taggerService;
+        _scopeManager          = scopeManager;
         _mediator              = mediator;
         _logger                = logger;
     }
@@ -50,25 +55,38 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
         BindingRegistryChangedNotification notification,
         CancellationToken cancellationToken)
     {
-        var projectFolder = notification.Project.ProjectFolder;
-
         if (notification.IsFullReplacement)
-            await ScanAllFeatureFilesAsync(projectFolder, cancellationToken).ConfigureAwait(false);
+            await ScanAllFeatureFilesAsync(notification.Project, cancellationToken).ConfigureAwait(false);
 
-        await ReparseOpenFilesAsync(projectFolder, cancellationToken).ConfigureAwait(false);
+        await ReparseOpenFilesAsync(notification.Project, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ScanAllFeatureFilesAsync(string projectFolder, CancellationToken cancellationToken)
+    private async Task ScanAllFeatureFilesAsync(
+        LspReqnrollProject project,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(projectFolder) || !Directory.Exists(projectFolder))
-            return;
+        IReadOnlyCollection<string> allFeatureFiles;
 
-        var allFeatureFiles = Directory
-            .EnumerateFiles(projectFolder, "*.feature", SearchOption.AllDirectories)
-            .ToList();
+        if (_scopeManager.HasBaselineForProject(project))
+        {
+            // I1: use the authoritative index — this correctly includes linked features
+            // outside the project folder and excludes removed/conditional ones inside it.
+            allFeatureFiles = _scopeManager.GetIndexedFeatureFiles(project);
+        }
+        else
+        {
+            // Legacy fallback: project has never sent reqnroll/projectFiles (e.g. VS Code
+            // interim, or startup race before the first baseline arrives).
+            var projectFolder = project.ProjectFolder;
+            if (string.IsNullOrEmpty(projectFolder) || !Directory.Exists(projectFolder))
+                return;
 
-        // Skip files that are already open — ReparseOpenFilesAsync will handle those via
-        // the buffer and publish MatchCacheChangedNotification for semantic token refresh.
+            allFeatureFiles = Directory
+                .EnumerateFiles(projectFolder, "*.feature", SearchOption.AllDirectories)
+                .ToList();
+        }
+
+        // Skip files already open — ReparseOpenFilesAsync will handle those via the buffer.
         var openUris = _documentBufferService.All
             .Select(b => b.Uri.GetFileSystemPath())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -79,7 +97,7 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
 
         _logger.LogInfo(
             $"Full registry replacement — scanning {closedFiles.Count} closed feature file(s) " +
-            $"under '{projectFolder}'.");
+            $"for project '{project.ProjectName}'.");
 
         foreach (var filePath in closedFiles)
         {
@@ -88,7 +106,7 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
             {
                 var text = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
                 var uri  = DocumentUri.FromFileSystemPath(filePath);
-                await _taggerService.ScanClosedFileAsync(uri, text).ConfigureAwait(false);
+                await _taggerService.ScanClosedFileAsync(uri, text, project).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -97,22 +115,27 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
         }
     }
 
-    private async Task ReparseOpenFilesAsync(string projectFolder, CancellationToken cancellationToken)
+    private async Task ReparseOpenFilesAsync(
+        LspReqnrollProject project,
+        CancellationToken cancellationToken)
     {
+        // Select open feature buffers that belong to the changed project.
+        // Use the membership index when a baseline has been received (I1); fall back to
+        // folder-prefix for projects that haven't sent reqnroll/projectFiles.
         var affectedBuffers = _documentBufferService.All
-            .Where(b => IsUnderProjectFolder(b.Uri, projectFolder))
+            .Where(b => IsOwnedByProject(b.Uri, project))
             .ToList();
 
         if (affectedBuffers.Count == 0)
         {
             _logger.LogVerbose(
-                $"BindingRegistryChanged — no open feature files to reparse under '{projectFolder}'.");
+                $"BindingRegistryChanged — no open feature files to reparse for '{project.ProjectName}'.");
             return;
         }
 
         _logger.LogInfo(
             $"BindingRegistryChanged — reparsing {affectedBuffers.Count} open feature file(s) " +
-            $"under '{projectFolder}'.");
+            $"for project '{project.ProjectName}'.");
 
         foreach (var buffer in affectedBuffers)
         {
@@ -122,13 +145,24 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
         }
     }
 
+    private bool IsOwnedByProject(DocumentUri uri, LspReqnrollProject project)
+    {
+        if (_scopeManager.HasBaselineForProject(project))
+        {
+            // Index-driven ownership check (I1).
+            var owners = _scopeManager.GetProjectsForUri(uri);
+            return owners.Contains(project);
+        }
+
+        // Fallback: folder-prefix for projects without a baseline.
+        return IsUnderProjectFolder(uri, project.ProjectFolder);
+    }
+
     private async Task ParseAndNotifyAsync(
         DocumentUri uri,
         int? version,
         CancellationToken cancellationToken)
     {
-        // ParseAsync stores updated tags, recomputes/stores the binding match set, and
-        // invalidates the semantic token cache internally before this notification fires.
         await _taggerService.ParseAsync(uri, version).ConfigureAwait(false);
         await _mediator.Publish(
             new MatchCacheChangedNotification(uri, version ?? 0),

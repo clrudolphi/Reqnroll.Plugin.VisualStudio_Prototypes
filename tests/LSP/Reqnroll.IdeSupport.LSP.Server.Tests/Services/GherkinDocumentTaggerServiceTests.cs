@@ -4,17 +4,19 @@ using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Services;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Services;
 
 public class GherkinDocumentTaggerServiceTests
 {
-    private readonly IDocumentBufferService _bufferService = Substitute.For<IDocumentBufferService>();
-    private readonly IDeveroomTagParser _tagParser = Substitute.For<IDeveroomTagParser>();
-    private readonly IProjectBindingRegistryLookup _registryLookup = Substitute.For<IProjectBindingRegistryLookup>();
-    private readonly ISemanticTokenService _semanticTokenService = Substitute.For<ISemanticTokenService>();
-    private readonly IBindingMatchService _bindingMatchService = Substitute.For<IBindingMatchService>();
-    private readonly IDeveroomLogger _logger = Substitute.For<IDeveroomLogger>();
+    private readonly IDocumentBufferService        _bufferService       = Substitute.For<IDocumentBufferService>();
+    private readonly IDeveroomTagParser            _tagParser           = Substitute.For<IDeveroomTagParser>();
+    private readonly IProjectBindingRegistryLookup _registryLookup      = Substitute.For<IProjectBindingRegistryLookup>();
+    private readonly ISemanticTokenService         _semanticTokenService = Substitute.For<ISemanticTokenService>();
+    private readonly IBindingMatchService          _bindingMatchService  = Substitute.For<IBindingMatchService>();
+    private readonly ILspWorkspaceScopeManager     _scopeManager         = Substitute.For<ILspWorkspaceScopeManager>();
+    private readonly IDeveroomLogger               _logger               = Substitute.For<IDeveroomLogger>();
 
     private static readonly DocumentUri FeatureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
 
@@ -23,10 +25,28 @@ public class GherkinDocumentTaggerServiceTests
         // Default: no project registered for this URI, so Invalid is returned.
         _registryLookup.GetRegistryForUri(Arg.Any<DocumentUri>())
                        .Returns(ProjectBindingRegistry.Invalid);
+        // Default: no primary owner resolved.
+        _scopeManager.ResolvePrimaryOwner(Arg.Any<DocumentUri>()).Returns((LspReqnrollProject?)null);
     }
 
     private GherkinDocumentTaggerService CreateSut() =>
-        new(_bufferService, _tagParser, _registryLookup, _semanticTokenService, _bindingMatchService, _logger);
+        new(_bufferService, _tagParser, _registryLookup, _semanticTokenService,
+            _bindingMatchService, _scopeManager, _logger);
+
+    private static LspReqnrollProject MakeProject(string folder = "/workspace")
+    {
+        var ideScope = new LspIdeScope(Substitute.For<IDeveroomLogger>());
+        return new LspReqnrollProject(
+            new Reqnroll.IdeSupport.LSP.Server.Protocol.ReqnrollProjectLoadedParams
+            {
+                WorkspaceFolder        = folder,
+                ProjectFile            = folder + "/My.csproj",
+                ProjectFolder          = folder,
+                OutputAssemblyPath     = folder + "/bin/My.dll",
+                TargetFrameworkMoniker = "net8.0"
+            },
+            ideScope);
+    }
 
     // ── Buffer-not-found ──────────────────────────────────────────────────────
 
@@ -59,10 +79,8 @@ public class GherkinDocumentTaggerServiceTests
         });
 
         var sut = CreateSut();
-        // Request version 99 but buffer has version 1
         var result = await sut.ParseAsync(FeatureUri, version: 99);
         result.Should().BeEmpty();
-        // Version mismatch is logged via extension method (not verifiable via NSubstitute directly)
     }
 
     // ── Successful parse ──────────────────────────────────────────────────────
@@ -90,11 +108,51 @@ public class GherkinDocumentTaggerServiceTests
         _tagParser.Received(1).Parse(
             Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
             Arg.Any<ProjectBindingRegistry>());
-        // The match set is recomputed and stored against the document URI before the
-        // semantic token cache is evicted.
         _bindingMatchService.Received(1).Store(
             Arg.Is<FeatureBindingMatchSet>(s => s.DocumentId == FeatureUri.ToString()));
         _semanticTokenService.Received(1).InvalidateCache(FeatureUri);
+    }
+
+    [Fact]
+    public async Task ParseAsync_stores_match_set_with_primary_owner_key()
+    {
+        var project = MakeProject();
+        _scopeManager.ResolvePrimaryOwner(FeatureUri).Returns(project);
+
+        var buf = new DocumentBuffer(FeatureUri, 1, "Feature: X\n");
+        DocumentBuffer? _;
+        _bufferService.TryGet(FeatureUri, out _).Returns(x => { x[1] = buf; return true; });
+        _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+                         Arg.Any<ProjectBindingRegistry>())
+                  .Returns(Array.Empty<DeveroomTag>());
+
+        await CreateSut().ParseAsync(FeatureUri, version: 1);
+
+        _bindingMatchService.Received(1).Store(
+            Arg.Is<FeatureBindingMatchSet>(s =>
+                s.DocumentId == FeatureUri.ToString() &&
+                s.Owner.ProjectFile == project.ProjectFullName &&
+                s.Owner.Tfm        == project.TargetFrameworkMoniker));
+    }
+
+    [Fact]
+    public async Task ParseAsync_stores_with_unknown_owner_when_no_primary_owner_resolved()
+    {
+        _scopeManager.ResolvePrimaryOwner(Arg.Any<DocumentUri>()).Returns((LspReqnrollProject?)null);
+
+        var buf = new DocumentBuffer(FeatureUri, 1, "Feature: X\n");
+        DocumentBuffer? _;
+        _bufferService.TryGet(FeatureUri, out _).Returns(x => { x[1] = buf; return true; });
+        _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+                         Arg.Any<ProjectBindingRegistry>())
+                  .Returns(Array.Empty<DeveroomTag>());
+
+        await CreateSut().ParseAsync(FeatureUri, version: 1);
+
+        _bindingMatchService.Received(1).Store(
+            Arg.Is<FeatureBindingMatchSet>(s =>
+                s.DocumentId == FeatureUri.ToString() &&
+                !s.Owner.IsKnown));
     }
 
     [Fact]
@@ -117,5 +175,54 @@ public class GherkinDocumentTaggerServiceTests
         var sut = CreateSut();
         var result = await sut.ParseAsync(FeatureUri, version: null);
         result.Should().BeSameAs(expectedTags);
+    }
+
+    // ── ScanClosedFileAsync open-document guard (Anomaly A) ────────────────────
+
+    [Fact]
+    public async Task ScanClosedFileAsync_skips_when_document_is_open()
+    {
+        var project = MakeProject();
+
+        var buf = new DocumentBuffer(FeatureUri, 2, "Feature: Open\n");
+        DocumentBuffer? open;
+        _bufferService.TryGet(FeatureUri, out open).Returns(x =>
+        {
+            x[1] = buf;
+            return true;
+        });
+
+        await CreateSut().ScanClosedFileAsync(FeatureUri, "Feature: Open\n", project);
+
+        _tagParser.DidNotReceive().Parse(
+            Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+            Arg.Any<ProjectBindingRegistry>());
+        _bindingMatchService.DidNotReceive().Store(Arg.Any<FeatureBindingMatchSet>());
+    }
+
+    [Fact]
+    public async Task ScanClosedFileAsync_stores_match_set_when_document_is_not_open()
+    {
+        var project = MakeProject();
+
+        DocumentBuffer? closed;
+        _bufferService.TryGet(FeatureUri, out closed).Returns(x =>
+        {
+            x[1] = (DocumentBuffer?)null;
+            return false;
+        });
+
+        var expectedTags = (IReadOnlyCollection<DeveroomTag>)Array.Empty<DeveroomTag>();
+        _tagParser.Parse(
+                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+                      Arg.Any<ProjectBindingRegistry>())
+                  .Returns(expectedTags);
+
+        await CreateSut().ScanClosedFileAsync(FeatureUri, "Feature: Closed\n", project);
+
+        _bindingMatchService.Received(1).Store(
+            Arg.Is<FeatureBindingMatchSet>(s =>
+                s.DocumentId == FeatureUri.ToString() &&
+                s.Owner.ProjectFile == project.ProjectFullName));
     }
 }

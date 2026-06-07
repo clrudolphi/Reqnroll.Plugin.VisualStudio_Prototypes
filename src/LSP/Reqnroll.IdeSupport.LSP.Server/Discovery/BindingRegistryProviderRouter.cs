@@ -2,6 +2,7 @@ using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
@@ -28,19 +29,20 @@ namespace Reqnroll.IdeSupport.LSP.Server.Discovery;
 /// Registries are intentionally <b>not</b> merged: step definitions belong to a single
 /// project and a feature file should only be matched against the bindings of its own project.
 /// <see cref="GetRegistryForUri"/> routes to the correct per-project registry via
-/// <see cref="ILspWorkspaceScopeManager.GetProjectForUri"/>.
+/// <see cref="ILspWorkspaceScopeManager.ResolvePrimaryOwner"/> (Q18 2A: deterministic
+/// home-project rule; no nondeterminism from baseline-arrival order).
 /// </para>
 /// <para>
 /// When any project's registry is replaced the router publishes a
 /// <see cref="BindingRegistryChangedNotification"/> via MediatR so that open feature files
-/// belonging to that project are re-parsed and semantic tokens refreshed — consistent with
-/// how <see cref="Notifications.ReqnrollConfigChangedNotification"/> works for config changes.
+/// belonging to that project are re-parsed and semantic tokens refreshed.
 /// </para>
 /// </remarks>
 public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLookup, IDisposable
 {
     private readonly ILspWorkspaceScopeManager _scopeManager;
     private readonly IMediator                 _mediator;
+    private readonly IBindingMatchService      _matchService;
     private readonly IDeveroomLogger            _logger;
 
     // Store (provider, handler) together so Dispose can unsubscribe by the exact delegate
@@ -53,10 +55,12 @@ public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLooku
     public BindingRegistryProviderRouter(
         ILspWorkspaceScopeManager scopeManager,
         IMediator mediator,
+        IBindingMatchService matchService,
         IDeveroomLogger logger)
     {
         _scopeManager = scopeManager;
         _mediator     = mediator;
+        _matchService = matchService;
         _logger       = logger;
 
         scopeManager.ProjectDiscovered += OnProjectDiscovered;
@@ -68,7 +72,9 @@ public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLooku
     /// <inheritdoc/>
     public ProjectBindingRegistry GetRegistryForUri(DocumentUri uri)
     {
-        var project = _scopeManager.GetProjectForUri(uri);
+        // Q18 2A: use the deterministic primary owner (home-project rule) instead of
+        // nondeterministic FirstOrDefault() on the full owner set.
+        var project = _scopeManager.ResolvePrimaryOwner(uri);
         if (project is null)
             return ProjectBindingRegistry.Invalid;
 
@@ -125,6 +131,10 @@ public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLooku
         entry.Provider.BindingRegistryChanged -= entry.Handler;
         entry.Provider.Dispose();
 
+        // Drop every (*, project) match-set entry so stale data does not linger.
+        _matchService.InvalidateAllForProject(
+            new ProjectOwner(project.ProjectFullName, project.TargetFrameworkMoniker));
+
         _logger.LogVerbose(
             $"[Router] Removed binding provider for '{project.ProjectName}'.");
     }
@@ -137,8 +147,6 @@ public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLooku
             $"[Router] Binding registry updated for '{project.ProjectName}' " +
             $"(fullReplacement={isFullReplacement}); publishing notification.");
 
-        // Fire-and-forget: MediatR publish is async but this is called from a background
-        // Task inside ConnectorBindingRegistryProvider.  Exceptions are logged by the handler.
         _ = _mediator.Publish(new BindingRegistryChangedNotification(project, isFullReplacement));
     }
 }

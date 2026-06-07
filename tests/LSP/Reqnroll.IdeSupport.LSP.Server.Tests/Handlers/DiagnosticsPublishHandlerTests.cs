@@ -9,21 +9,29 @@ using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;
 
 public class DiagnosticsPublishHandlerTests
 {
-    private readonly IDocumentBufferService  _bufferService   = Substitute.For<IDocumentBufferService>();
-    private readonly IBindingMatchService    _matchService    = Substitute.For<IBindingMatchService>();
-    private readonly IDiagnosticsAggregator  _aggregator      = Substitute.For<IDiagnosticsAggregator>();
-    private readonly ILanguageServerFacade   _facade          = Substitute.For<ILanguageServerFacade>();
-    private readonly IDeveroomLogger          _logger          = Substitute.For<IDeveroomLogger>();
+    private readonly IDocumentBufferService    _bufferService  = Substitute.For<IDocumentBufferService>();
+    private readonly IBindingMatchService      _matchService   = Substitute.For<IBindingMatchService>();
+    private readonly ILspWorkspaceScopeManager _scopeManager   = Substitute.For<ILspWorkspaceScopeManager>();
+    private readonly IDiagnosticsAggregator    _aggregator     = Substitute.For<IDiagnosticsAggregator>();
+    private readonly ILanguageServerFacade     _facade         = Substitute.For<ILanguageServerFacade>();
+    private readonly IDeveroomLogger            _logger         = Substitute.For<IDeveroomLogger>();
 
     private static readonly DocumentUri FeatureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
 
+    public DiagnosticsPublishHandlerTests()
+    {
+        // Default: no primary owner resolved — handler falls back to Unknown key.
+        _scopeManager.ResolvePrimaryOwner(Arg.Any<DocumentUri>()).Returns((LspReqnrollProject?)null);
+    }
+
     private DiagnosticsPublishHandler CreateSut() =>
-        new(_bufferService, _matchService, _aggregator, _facade, _logger);
+        new(_bufferService, _matchService, _scopeManager, _aggregator, _facade, _logger);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

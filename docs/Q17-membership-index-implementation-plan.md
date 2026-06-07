@@ -1,6 +1,6 @@
 # Implementation Plan — Authoritative Project-Membership Index (Q17)
 
-**Status:** Proposed
+**Status:** Milestone A implemented (branch `refactor_to_support_linked_files`)
 **Design reference:** [LSP-IDE-Support-Design.md → Q17](LSP-IDE-Support-Design.md#q17--linked-files-and-project-membership--analysis-and-resolution), [Project membership](LSP-IDE-Support-Design.md#project-membership-the-path--projects-index), [Client ↔ Server custom notifications](LSP-IDE-Support-Design.md#client--server-custom-notifications)
 
 This plan turns the chosen Q17 design into concrete code changes across the **LSP server** and the **Visual Studio extension**. VS Code and Rider clients do not yet exist in this repo; the protocol contract here is written so those clients can adopt it later (each simply produces the same `reqnroll/projectFiles` payload from its own project system).

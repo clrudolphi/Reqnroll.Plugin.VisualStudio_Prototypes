@@ -193,6 +193,14 @@ public class Program
                 .GetRequiredService<ILspWorkspaceScopeManager>()
                 .HandleProjectUnloadedAsync(p, ct));
 
+        // reqnroll/projectFiles — IDE glue sends the authoritative file-membership index
+        // (baseline on load/rebuild, delta on item add/remove).  Drives I1/I2 invariants.
+        options.OnNotification<ReqnrollProjectFilesParams>(
+            "reqnroll/projectFiles",
+            (p, ct) => serverServices!
+                .GetRequiredService<ILspWorkspaceScopeManager>()
+                .HandleProjectFilesAsync(p, ct));
+
         // ── Bypassing registering the SemanticTokensHandler as a regular handler ──
         // Otherwise, it will register its capabilities dynamically, which VisualStudio doesn't support.
         // Directly wiring the handler to respond to specific request messages.

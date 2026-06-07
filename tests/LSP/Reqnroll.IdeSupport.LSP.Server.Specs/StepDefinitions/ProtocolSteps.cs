@@ -81,6 +81,31 @@ public sealed class ProtocolSteps
             projectFile = Path.Combine(_ctx.WorkspaceFolder, "Sample.csproj")
         });
 
+    /// <summary>
+    /// Sends a <c>reqnroll/projectFiles</c> baseline notification that includes every file
+    /// listed in the Reqnroll table.  The table must have columns <c>path</c> and <c>role</c>
+    /// (Feature | Binding).  Paths are relative to <see cref="LspScenarioContext.WorkspaceFolder"/>.
+    /// </summary>
+    [When(@"the project files baseline is announced for ""(.*)"" with")]
+    public void WhenTheProjectFilesBaselineIsAnnounced(string projectFileName, Table table)
+    {
+        var projectFile = Path.Combine(_ctx.WorkspaceFolder, projectFileName);
+        var files = table.Rows.Select(r => new
+        {
+            path  = Path.Combine(_ctx.WorkspaceFolder, r["path"]),
+            role  = string.Equals(r["role"], "Feature", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
+            added = true
+        }).ToArray();
+
+        _ctx.Harness.Client.SendProjectFiles(new
+        {
+            projectFile,
+            targetFrameworkMoniker = ".NETCoreApp,Version=v8.0",
+            kind  = 0,    // Baseline
+            files
+        });
+    }
+
     // ── Then: handshake ─────────────────────────────────────────────────────────
 
     [Then("the server advertises a semantic tokens provider")]

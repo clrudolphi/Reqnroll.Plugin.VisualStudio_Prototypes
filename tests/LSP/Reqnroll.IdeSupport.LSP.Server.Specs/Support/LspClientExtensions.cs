@@ -83,6 +83,9 @@ public static class LspClientExtensions
     public static void SendProjectUnloaded(this ILanguageClient client, object payload)
         => client.SendNotification("reqnroll/projectUnloaded", payload);
 
+    public static void SendProjectFiles(this ILanguageClient client, object payload)
+        => client.SendNotification("reqnroll/projectFiles", payload);
+
     public static Task<LocationOrLocationLinks?> RequestReferencesAsync(
         this ILanguageClient client, DocumentUri uri, int line, int character, CancellationToken ct = default)
         => client.SendRequest("textDocument/references",

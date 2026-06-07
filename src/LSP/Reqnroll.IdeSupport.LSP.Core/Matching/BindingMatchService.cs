@@ -8,17 +8,21 @@ namespace Reqnroll.IdeSupport.LSP.Core.Matching;
 /// <inheritdoc cref="IBindingMatchService"/>
 public sealed class BindingMatchService : IBindingMatchService
 {
-    private readonly ConcurrentDictionary<string, FeatureBindingMatchSet> _cache = new();
+    private readonly ConcurrentDictionary<MatchSetKey, FeatureBindingMatchSet> _cache = new();
 
     public void Store(FeatureBindingMatchSet matchSet)
     {
         if (matchSet == null) throw new ArgumentNullException(nameof(matchSet));
-        _cache[matchSet.DocumentId] = matchSet;
+        _cache[matchSet.Key] = matchSet;
+        // When a project-keyed entry arrives, evict any Unknown placeholder for the same document
+        // so the transition from pre-baseline to post-baseline state is clean.
+        if (matchSet.Key.Owner.IsKnown)
+            _cache.TryRemove(MatchSetKey.ForUnknownProject(matchSet.Key.DocumentId), out _);
     }
 
-    public bool TryGet(string documentId, out FeatureBindingMatchSet matchSet)
+    public bool TryGet(MatchSetKey key, out FeatureBindingMatchSet matchSet)
     {
-        if (documentId != null && _cache.TryGetValue(documentId, out var found))
+        if (_cache.TryGetValue(key, out var found))
         {
             matchSet = found;
             return true;
@@ -28,28 +32,69 @@ public sealed class BindingMatchService : IBindingMatchService
         return false;
     }
 
-    public void Invalidate(string documentId)
+    public void InvalidateAllForDocument(string documentId)
     {
-        if (documentId != null)
-            _cache.TryRemove(documentId, out _);
+        if (string.IsNullOrEmpty(documentId))
+            return;
+
+        foreach (var key in _cache.Keys.Where(k =>
+            string.Equals(k.DocumentId, documentId, StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            _cache.TryRemove(key, out _);
+        }
+    }
+
+    public void InvalidateAllForProject(ProjectOwner owner)
+    {
+        if (!owner.IsKnown)
+            return;
+
+        foreach (var key in _cache.Keys.Where(k =>
+            string.Equals(k.Owner.ProjectFile, owner.ProjectFile, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(k.Owner.Tfm,         owner.Tfm,         StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            _cache.TryRemove(key, out _);
+        }
     }
 
     public void InvalidateAll() => _cache.Clear();
 
-    public IReadOnlyList<StepBindingMatch> FindUsages(SourceLocation bindingLocation)
+    public IReadOnlyList<StepBindingMatch> FindUsages(
+        SourceLocation bindingLocation,
+        IReadOnlyCollection<ProjectOwner>? projectFilter = null)
     {
         if (bindingLocation == null)
             return Array.Empty<StepBindingMatch>();
 
         var usages = new List<StepBindingMatch>();
 
-        // Snapshot of values; ConcurrentDictionary enumeration is safe under concurrent writes.
-        foreach (var set in _cache.Values)
+        // ConcurrentDictionary enumeration is safe under concurrent writes.
+        foreach (var pair in _cache)
+        {
+            var key = pair.Key;
+            var set = pair.Value;
+            // Unknown entries are pre-baseline placeholders — always include them so
+            // F14 works during the transition before the first baseline arrives.
+            if (projectFilter != null && key.Owner.IsKnown && !MatchesFilter(key.Owner, projectFilter))
+                continue;
+
             foreach (var step in set.Steps)
                 if (step.BindingLocations.Any(loc => SameLocation(loc, bindingLocation)))
                     usages.Add(step);
+        }
 
         return usages;
+    }
+
+    private static bool MatchesFilter(ProjectOwner owner, IReadOnlyCollection<ProjectOwner> filter)
+    {
+        foreach (var f in filter)
+        {
+            if (string.Equals(f.ProjectFile, owner.ProjectFile, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(f.Tfm,         owner.Tfm,         StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     private static bool SameLocation(SourceLocation a, SourceLocation b)

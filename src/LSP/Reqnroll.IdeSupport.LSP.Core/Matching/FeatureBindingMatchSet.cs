@@ -7,28 +7,38 @@ namespace Reqnroll.IdeSupport.LSP.Core.Matching;
 
 /// <summary>
 /// The immutable set of step binding matches for one feature document, cached against
-/// <c>(DocumentId, DocumentVersion, RegistryVersion)</c>. This is the value stored by
+/// <c>(DocumentId, Owner, DocumentVersion, RegistryVersion)</c>. This is the value stored by
 /// <see cref="IBindingMatchService"/> and queried by Go to Definition (F5), the diagnostics
 /// aggregator (F3) and find-usages (F14/F18).
 /// </summary>
 public sealed class FeatureBindingMatchSet
 {
     public static readonly FeatureBindingMatchSet Empty =
-        new(string.Empty, null, 0, Array.Empty<StepBindingMatch>());
+        new(string.Empty, ProjectOwner.Unknown, null, 0, Array.Empty<StepBindingMatch>());
 
     public FeatureBindingMatchSet(
         string documentId,
+        ProjectOwner owner,
         int? documentVersion,
         int registryVersion,
         IReadOnlyList<StepBindingMatch> steps)
     {
-        DocumentId = documentId ?? throw new ArgumentNullException(nameof(documentId));
+        Key = new MatchSetKey(
+            documentId ?? throw new ArgumentNullException(nameof(documentId)),
+            owner);
         DocumentVersion = documentVersion;
         RegistryVersion = registryVersion;
-        Steps = steps ?? throw new ArgumentNullException(nameof(steps));
+        Steps           = steps ?? throw new ArgumentNullException(nameof(steps));
     }
 
-    public string DocumentId { get; }
+    /// <summary>The composite cache key: document URI + owning project.</summary>
+    public MatchSetKey Key { get; }
+
+    /// <summary>The feature document URI (derived from <see cref="Key"/>).</summary>
+    public string DocumentId => Key.DocumentId;
+
+    /// <summary>The owning project for this match set (derived from <see cref="Key"/>).</summary>
+    public ProjectOwner Owner => Key.Owner;
 
     /// <summary>The feature document version these matches were computed for, when known.</summary>
     public int? DocumentVersion { get; }
@@ -39,7 +49,7 @@ public sealed class FeatureBindingMatchSet
     public IReadOnlyList<StepBindingMatch> Steps { get; }
 
     public IEnumerable<StepBindingMatch> Undefined => Steps.Where(s => s.IsUndefined);
-    public IEnumerable<StepBindingMatch> Defined => Steps.Where(s => s.IsDefined);
+    public IEnumerable<StepBindingMatch> Defined   => Steps.Where(s => s.IsDefined);
     public IEnumerable<StepBindingMatch> Ambiguous => Steps.Where(s => s.IsAmbiguous);
 
     /// <summary>The step whose text span contains <paramref name="offset"/>, or null. Used by F5.</summary>
@@ -60,7 +70,8 @@ public sealed class FeatureBindingMatchSet
         string documentId,
         int? documentVersion,
         int registryVersion,
-        IEnumerable<DeveroomTag> tags)
+        IEnumerable<DeveroomTag> tags,
+        ProjectOwner owner = default)
     {
         var byStart = new Dictionary<int, StepBindingMatch>();
 
@@ -77,6 +88,6 @@ public sealed class FeatureBindingMatchSet
         }
 
         var steps = byStart.Values.OrderBy(s => s.Range.Start).ToArray();
-        return new FeatureBindingMatchSet(documentId, documentVersion, registryVersion, steps);
+        return new FeatureBindingMatchSet(documentId, owner, documentVersion, registryVersion, steps);
     }
 }

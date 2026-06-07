@@ -1,0 +1,158 @@
+using System.Diagnostics;
+using Reqnroll.IdeSupport.Common.Diagnostics;
+using Reqnroll.IdeSupport.LSP.Server.Discovery;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
+
+namespace Reqnroll.IdeSupport.LSP.Server.Tests.Discovery;
+
+/// <summary>
+/// Unit tests for <see cref="CSharpBindingDiscoveryService"/>.
+/// Verifies the fan-out to N owning projects (Q17 W3a) and the I2 unowned-gate.
+/// </summary>
+public class CSharpBindingDiscoveryServiceTests : IDisposable
+{
+    private readonly ILspWorkspaceScopeManager _scopeManager = Substitute.For<ILspWorkspaceScopeManager>();
+    private readonly IDeveroomLogger           _logger       = Substitute.For<IDeveroomLogger>();
+    private readonly IDeveroomLogger           _ideLogger    = Substitute.For<IDeveroomLogger>();
+    private readonly LspIdeScope               _ideScope;
+
+    private readonly string _root1 = Path.Combine(Path.GetTempPath(), "CsBDSTests_" + Guid.NewGuid().ToString("N"));
+    private readonly string _root2 = Path.Combine(Path.GetTempPath(), "CsBDSTests_" + Guid.NewGuid().ToString("N"));
+
+    private static readonly DocumentUri CsUri =
+        DocumentUri.FromFileSystemPath("/workspace/src/StepDefinitions.cs");
+
+    public CSharpBindingDiscoveryServiceTests()
+    {
+        _ideScope = new LspIdeScope(_ideLogger);
+        Directory.CreateDirectory(_root1);
+        Directory.CreateDirectory(_root2);
+    }
+
+    public void Dispose()
+    {
+        // LspIdeScope is not IDisposable; no cleanup needed for it.
+        try { if (Directory.Exists(_root1)) Directory.Delete(_root1, recursive: true); } catch { }
+        try { if (Directory.Exists(_root2)) Directory.Delete(_root2, recursive: true); } catch { }
+    }
+
+    private CSharpBindingDiscoveryService CreateSut() => new(_scopeManager, _logger);
+
+    // ── I2 unowned gate ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateFromSourceAsync_logs_I2_skip_when_file_is_unowned()
+    {
+        _scopeManager.ResolveOwners(Arg.Any<DocumentUri>())
+            .Returns(Array.Empty<LspReqnrollProject>());
+        _scopeManager.GetMembershipState(Arg.Any<DocumentUri>())
+            .Returns(MembershipState.Unowned);
+
+        await CreateSut().UpdateFromSourceAsync(CsUri, string.Empty, CancellationToken.None);
+
+        // LogVerbose is a static extension method — verify via the underlying Log() call.
+        _logger.Received().Log(Arg.Is<LogMessage>(m =>
+            m.Level == TraceLevel.Verbose &&
+            m.Message.Contains("excluded") && m.Message.Contains("I2")));
+    }
+
+    [Fact]
+    public async Task UpdateFromSourceAsync_logs_skip_when_file_is_pending()
+    {
+        _scopeManager.ResolveOwners(Arg.Any<DocumentUri>())
+            .Returns(Array.Empty<LspReqnrollProject>());
+        _scopeManager.GetMembershipState(Arg.Any<DocumentUri>())
+            .Returns(MembershipState.Pending);
+
+        await CreateSut().UpdateFromSourceAsync(CsUri, string.Empty, CancellationToken.None);
+
+        _logger.Received().Log(Arg.Is<LogMessage>(m =>
+            m.Level == TraceLevel.Verbose &&
+            (m.Message.Contains("No project owns") || m.Message.Contains("state=Pending"))));
+    }
+
+    [Fact]
+    public async Task UpdateFromSourceAsync_logs_skip_when_project_has_no_provider()
+    {
+        var project = DiscoveryTestSupport.MakeProject(_ideScope, _root1);
+        // No ConnectorBindingRegistryProvider in project.Properties.
+        _scopeManager.ResolveOwners(Arg.Any<DocumentUri>())
+            .Returns(new[] { project });
+
+        await CreateSut().UpdateFromSourceAsync(CsUri, string.Empty, CancellationToken.None);
+
+        _logger.Received().Log(Arg.Is<LogMessage>(m =>
+            m.Level == TraceLevel.Verbose && m.Message.Contains("no binding provider")));
+
+        project.Dispose();
+    }
+
+    // ── Fan-out to N owners ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateFromSourceAsync_fans_out_to_all_owning_projects()
+    {
+        // Two projects, each with a real ConnectorBindingRegistryProvider.
+        var project1 = DiscoveryTestSupport.MakeProject(_ideScope, _root1);
+        var project2 = DiscoveryTestSupport.MakeProject(_ideScope, _root2);
+
+        var provider1 = new ConnectorBindingRegistryProvider(project1, _logger);
+        var provider2 = new ConnectorBindingRegistryProvider(project2, _logger);
+        project1.Properties[typeof(ConnectorBindingRegistryProvider)] = provider1;
+        project2.Properties[typeof(ConnectorBindingRegistryProvider)] = provider2;
+
+        var changed1 = false;
+        var changed2 = false;
+        provider1.BindingRegistryChanged += (_, _) => changed1 = true;
+        provider2.BindingRegistryChanged += (_, _) => changed2 = true;
+
+        _scopeManager.ResolveOwners(Arg.Any<DocumentUri>())
+            .Returns(new[] { project1, project2 });
+
+        // A URI that GetFileSystemPath() returns a non-empty value for.
+        var csUri = DocumentUri.FromFileSystemPath(Path.Combine(_root1, "Steps.cs"));
+
+        await CreateSut().UpdateFromSourceAsync(csUri, string.Empty, CancellationToken.None);
+
+        changed1.Should().BeTrue("provider1 should be updated for project1");
+        changed2.Should().BeTrue("provider2 should be updated for project2");
+
+        provider1.Dispose();
+        provider2.Dispose();
+        project1.Dispose();
+        project2.Dispose();
+    }
+
+    [Fact]
+    public async Task UpdateFromSourceAsync_with_single_owner_updates_only_that_provider()
+    {
+        var project1 = DiscoveryTestSupport.MakeProject(_ideScope, _root1);
+        var project2 = DiscoveryTestSupport.MakeProject(_ideScope, _root2);
+
+        var provider1 = new ConnectorBindingRegistryProvider(project1, _logger);
+        var provider2 = new ConnectorBindingRegistryProvider(project2, _logger);
+        project1.Properties[typeof(ConnectorBindingRegistryProvider)] = provider1;
+        project2.Properties[typeof(ConnectorBindingRegistryProvider)] = provider2;
+
+        var changed1 = false;
+        var changed2 = false;
+        provider1.BindingRegistryChanged += (_, _) => changed1 = true;
+        provider2.BindingRegistryChanged += (_, _) => changed2 = true;
+
+        // Only project1 owns the file.
+        _scopeManager.ResolveOwners(Arg.Any<DocumentUri>())
+            .Returns(new[] { project1 });
+
+        var csUri = DocumentUri.FromFileSystemPath(Path.Combine(_root1, "Steps.cs"));
+
+        await CreateSut().UpdateFromSourceAsync(csUri, string.Empty, CancellationToken.None);
+
+        changed1.Should().BeTrue("project1's provider should be updated");
+        changed2.Should().BeFalse("project2's provider must not be updated — it doesn't own the file");
+
+        provider1.Dispose();
+        provider2.Dispose();
+        project1.Dispose();
+        project2.Dispose();
+    }
+}

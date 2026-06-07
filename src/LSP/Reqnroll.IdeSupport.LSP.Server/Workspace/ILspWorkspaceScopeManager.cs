@@ -88,4 +88,55 @@ public interface ILspWorkspaceScopeManager
     /// project or workspace matches.
     /// </summary>
     IDeveroomConfigurationProvider GetConfigurationProviderForUri(DocumentUri uri);
+
+    // ── Primary-owner resolution (Q18 phase 2A) ──────────────────────────────
+
+    /// <summary>
+    /// Returns the single deterministic owner for <paramref name="uri"/>:
+    /// the owner whose <see cref="LspReqnrollProject.ProjectFolder"/> is the longest path-prefix
+    /// of the file (home project); for files outside every owner's folder, the owner with the
+    /// ordinally-smallest <see cref="LspReqnrollProject.ProjectFullName"/> is used as a stable
+    /// tiebreak. Returns <see langword="null"/> when <see cref="ResolveOwners"/> returns no owners.
+    /// </summary>
+    LspReqnrollProject? ResolvePrimaryOwner(DocumentUri uri);
+
+    // ── Membership index (Q17) ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Handles a <c>reqnroll/projectFiles</c> notification.
+    /// Applies a baseline or delta to the authoritative path → projects membership index.
+    /// </summary>
+    Task HandleProjectFilesAsync(ReqnrollProjectFilesParams parameters,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns all projects that the membership index attributes <paramref name="uri"/> to.
+    /// Returns an empty collection when no project has claimed the file.
+    /// </summary>
+    IReadOnlyCollection<LspReqnrollProject> GetProjectsForUri(DocumentUri uri);
+
+    /// <summary>
+    /// Resolves the owning projects for <paramref name="uri"/> using the full fallback chain:
+    /// index hit → owners; pending (no baseline yet) → folder-prefix singleton;
+    /// unowned → empty.
+    /// </summary>
+    IReadOnlyCollection<LspReqnrollProject> ResolveOwners(DocumentUri uri);
+
+    /// <summary>
+    /// Returns the membership state of <paramref name="uri"/> relative to the index.
+    /// </summary>
+    MembershipState GetMembershipState(DocumentUri uri);
+
+    /// <summary>
+    /// Returns all feature-file paths attributed to <paramref name="project"/> by the index.
+    /// Returns an empty collection when no baseline has been received yet (caller should
+    /// check <see cref="HasBaselineForProject"/> to distinguish empty-index from no-index).
+    /// </summary>
+    IReadOnlyCollection<string> GetIndexedFeatureFiles(LspReqnrollProject project);
+
+    /// <summary>
+    /// Returns <see langword="true"/> when a baseline has been received for
+    /// <paramref name="project"/>, even if that baseline contained no files.
+    /// </summary>
+    bool HasBaselineForProject(LspReqnrollProject project);
 }

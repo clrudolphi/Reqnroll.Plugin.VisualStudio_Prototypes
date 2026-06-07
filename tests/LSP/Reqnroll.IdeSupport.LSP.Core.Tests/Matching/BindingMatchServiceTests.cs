@@ -6,7 +6,8 @@ namespace Reqnroll.IdeSupport.LSP.Core.Tests.Matching;
 
 public class BindingMatchServiceTests
 {
-    private const string Uri = "file:///c:/proj/feature1.feature";
+    private const string Uri       = "file:///c:/proj/feature1.feature";
+    private const string SecondUri = "file:///c:/proj/feature2.feature";
 
     private readonly IDeveroomLogger _logger = Substitute.For<IDeveroomLogger>();
     private readonly IMonitoringService _monitoringService = Substitute.For<IMonitoringService>();
@@ -35,17 +36,19 @@ public class BindingMatchServiceTests
         return parser.Parse(new StubGherkinTextSnapshot(text), registry);
     }
 
-    private FeatureBindingMatchSet BuildSet(string text, ProjectBindingRegistry registry, int? version = 1)
+    private FeatureBindingMatchSet BuildSet(
+        string text, ProjectBindingRegistry registry,
+        int? version = 1, string docUri = Uri, ProjectOwner owner = default)
     {
         var tags = ParseTags(text, registry);
-        return FeatureBindingMatchSet.FromTags(Uri, version, registry.Version, tags);
+        return FeatureBindingMatchSet.FromTags(docUri, version, registry.Version, tags, owner);
     }
 
-    private const string DefinedFeature =
-        "Feature: F\nScenario: S\n    Given my step\n";
+    private static readonly ProjectOwner OwnerA = new("C:/proj/A.csproj", "net8.0");
+    private static readonly ProjectOwner OwnerB = new("C:/proj/B.csproj", "net8.0");
 
-    private const string UndefinedFeature =
-        "Feature: F\nScenario: S\n    Given no such step\n";
+    private const string DefinedFeature  = "Feature: F\nScenario: S\n    Given my step\n";
+    private const string UndefinedFeature = "Feature: F\nScenario: S\n    Given no such step\n";
 
     // ── FromTags / FeatureBindingMatchSet ───────────────────────────────────────
 
@@ -74,13 +77,13 @@ public class BindingMatchServiceTests
     [Fact]
     public void FindAt_returns_the_step_whose_span_contains_the_offset()
     {
-        var set = BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step")));
+        var set  = BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step")));
         var step = set.Steps[0];
 
         set.FindAt(step.Range.Start).Should().BeSameAs(step);
         set.FindAt(step.Range.End - 1).Should().BeSameAs(step);
-        set.FindAt(step.Range.End).Should().BeNull();          // end is exclusive
-        set.FindAt(0).Should().BeNull();                       // before the step text
+        set.FindAt(step.Range.End).Should().BeNull();
+        set.FindAt(0).Should().BeNull();
     }
 
     [Fact]
@@ -100,7 +103,17 @@ public class BindingMatchServiceTests
         FeatureBindingMatchSet.Empty.FindAt(0).Should().BeNull();
     }
 
-    // ── BindingMatchService cache ───────────────────────────────────────────────
+    [Fact]
+    public void FromTags_owner_is_stored_on_the_key()
+    {
+        var set = BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step")), owner: OwnerA);
+
+        set.Owner.Should().Be(OwnerA);
+        set.Key.Owner.Should().Be(OwnerA);
+        set.Key.DocumentId.Should().Be(Uri);
+    }
+
+    // ── BindingMatchService cache (single-project, unknown owner) ──────────────
 
     [Fact]
     public void Store_then_TryGet_returns_the_set()
@@ -110,7 +123,7 @@ public class BindingMatchServiceTests
 
         sut.Store(set);
 
-        sut.TryGet(Uri, out var found).Should().BeTrue();
+        sut.TryGet(MatchSetKey.ForUnknownProject(Uri), out var found).Should().BeTrue();
         found.Should().BeSameAs(set);
     }
 
@@ -119,34 +132,34 @@ public class BindingMatchServiceTests
     {
         var sut = new BindingMatchService();
 
-        sut.TryGet("file:///nope.feature", out var found).Should().BeFalse();
+        sut.TryGet(MatchSetKey.ForUnknownProject("file:///nope.feature"), out var found).Should().BeFalse();
         found.Should().BeSameAs(FeatureBindingMatchSet.Empty);
     }
 
     [Fact]
-    public void Store_replaces_the_prior_set_for_the_same_document()
+    public void Store_replaces_the_prior_set_for_the_same_key()
     {
-        var sut = new BindingMatchService();
-        var first = BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step")), version: 1);
+        var sut    = new BindingMatchService();
+        var first  = BuildSet(DefinedFeature,   RegistryWith(GivenBinding("my step")), version: 1);
         var second = BuildSet(UndefinedFeature, RegistryWith(GivenBinding("my step")), version: 2);
 
         sut.Store(first);
         sut.Store(second);
 
-        sut.TryGet(Uri, out var found).Should().BeTrue();
+        sut.TryGet(MatchSetKey.ForUnknownProject(Uri), out var found).Should().BeTrue();
         found.Should().BeSameAs(second);
         found.DocumentVersion.Should().Be(2);
     }
 
     [Fact]
-    public void Invalidate_drops_the_document_entry()
+    public void InvalidateAllForDocument_drops_the_document_entry()
     {
         var sut = new BindingMatchService();
         sut.Store(BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step"))));
 
-        sut.Invalidate(Uri);
+        sut.InvalidateAllForDocument(Uri);
 
-        sut.TryGet(Uri, out _).Should().BeFalse();
+        sut.TryGet(MatchSetKey.ForUnknownProject(Uri), out _).Should().BeFalse();
     }
 
     [Fact]
@@ -157,7 +170,87 @@ public class BindingMatchServiceTests
 
         sut.InvalidateAll();
 
-        sut.TryGet(Uri, out _).Should().BeFalse();
+        sut.TryGet(MatchSetKey.ForUnknownProject(Uri), out _).Should().BeFalse();
+    }
+
+    // ── Per-project keying (Q18 2B) ────────────────────────────────────────────
+
+    [Fact]
+    public void Store_with_known_owner_evicts_Unknown_placeholder_for_same_document()
+    {
+        var sut         = new BindingMatchService();
+        var registry    = RegistryWith(GivenBinding("my step"));
+        var placeholder = BuildSet(DefinedFeature, registry, version: 1); // owner = Unknown
+        var projectSet  = BuildSet(DefinedFeature, registry, version: 1, owner: OwnerA);
+
+        sut.Store(placeholder);
+        sut.TryGet(MatchSetKey.ForUnknownProject(Uri), out _).Should().BeTrue("placeholder stored");
+
+        sut.Store(projectSet);
+        sut.TryGet(MatchSetKey.ForUnknownProject(Uri), out _)
+           .Should().BeFalse("Unknown entry evicted by project-keyed store");
+        sut.TryGet(new MatchSetKey(Uri, OwnerA), out _).Should().BeTrue("project entry present");
+    }
+
+    [Fact]
+    public void Two_projects_can_store_independent_match_sets_for_the_same_document()
+    {
+        var sut      = new BindingMatchService();
+        var regA     = RegistryWith(GivenBinding("my step",  file: "A.cs", line: 1));
+        var regB     = RegistryWith(GivenBinding("my step",  file: "B.cs", line: 1));
+        var setA     = BuildSet(DefinedFeature, regA, owner: OwnerA);
+        var setB     = BuildSet(DefinedFeature, regB, owner: OwnerB);
+
+        sut.Store(setA);
+        sut.Store(setB);
+
+        sut.TryGet(new MatchSetKey(Uri, OwnerA), out var foundA).Should().BeTrue();
+        sut.TryGet(new MatchSetKey(Uri, OwnerB), out var foundB).Should().BeTrue();
+        foundA.Should().BeSameAs(setA);
+        foundB.Should().BeSameAs(setB);
+    }
+
+    [Fact]
+    public void InvalidateAllForDocument_removes_all_owner_slots_for_that_uri()
+    {
+        var sut  = new BindingMatchService();
+        var reg  = RegistryWith(GivenBinding("my step"));
+        sut.Store(BuildSet(DefinedFeature, reg, owner: OwnerA));
+        sut.Store(BuildSet(DefinedFeature, reg, owner: OwnerB));
+
+        sut.InvalidateAllForDocument(Uri);
+
+        sut.TryGet(new MatchSetKey(Uri, OwnerA), out _).Should().BeFalse();
+        sut.TryGet(new MatchSetKey(Uri, OwnerB), out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void InvalidateAllForDocument_does_not_remove_other_documents()
+    {
+        var sut = new BindingMatchService();
+        var reg = RegistryWith(GivenBinding("my step"));
+        sut.Store(BuildSet(DefinedFeature, reg, docUri: Uri,       owner: OwnerA));
+        sut.Store(BuildSet(DefinedFeature, reg, docUri: SecondUri, owner: OwnerA));
+
+        sut.InvalidateAllForDocument(Uri);
+
+        sut.TryGet(new MatchSetKey(SecondUri, OwnerA), out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public void InvalidateAllForProject_removes_all_slots_for_that_project()
+    {
+        var sut = new BindingMatchService();
+        var reg = RegistryWith(GivenBinding("my step"));
+        sut.Store(BuildSet(DefinedFeature, reg, docUri: Uri,       owner: OwnerA));
+        sut.Store(BuildSet(DefinedFeature, reg, docUri: SecondUri, owner: OwnerA));
+        sut.Store(BuildSet(DefinedFeature, reg, docUri: Uri,       owner: OwnerB));
+
+        sut.InvalidateAllForProject(OwnerA);
+
+        sut.TryGet(new MatchSetKey(Uri,       OwnerA), out _).Should().BeFalse();
+        sut.TryGet(new MatchSetKey(SecondUri, OwnerA), out _).Should().BeFalse();
+        sut.TryGet(new MatchSetKey(Uri,       OwnerB), out _).Should().BeTrue("OwnerB unaffected");
     }
 
     // ── reverse index (FindUsages) ──────────────────────────────────────────────
@@ -168,7 +261,6 @@ public class BindingMatchServiceTests
         var sut = new BindingMatchService();
         sut.Store(BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step", file: "Steps.cs", line: 5))));
 
-        // Column differs intentionally — usages are matched by file + line only.
         var usages = sut.FindUsages(new SourceLocation("Steps.cs", 5, 99));
 
         usages.Should().ContainSingle();
@@ -206,22 +298,17 @@ public class BindingMatchServiceTests
     [Fact]
     public void FindUsages_finds_matches_across_multiple_documents()
     {
-        const string secondUri = "file:///c:/proj/feature2.feature";
-        var sut = new BindingMatchService();
+        var sut      = new BindingMatchService();
         var registry = RegistryWith(GivenBinding("my step", file: "Steps.cs", line: 5));
 
-        sut.Store(BuildSet(DefinedFeature, registry));
-
-        // Manually build a second set keyed on a different document URI.
-        var tags2      = ParseTags(DefinedFeature, registry);
-        var secondSet  = FeatureBindingMatchSet.FromTags(secondUri, documentVersion: 1, registry.Version, tags2);
-        sut.Store(secondSet);
+        sut.Store(BuildSet(DefinedFeature, registry, docUri: Uri));
+        sut.Store(BuildSet(DefinedFeature, registry, docUri: SecondUri));
 
         var usages = sut.FindUsages(new SourceLocation("Steps.cs", 5, 1));
 
         usages.Should().HaveCount(2);
         usages.Select(u => u.FeatureDocumentId).Should()
-              .BeEquivalentTo([Uri, secondUri]);
+              .BeEquivalentTo([Uri, SecondUri]);
     }
 
     [Fact]
@@ -230,7 +317,6 @@ public class BindingMatchServiceTests
         var sut = new BindingMatchService();
         sut.Store(BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step", file: "Steps.cs", line: 5))));
 
-        // Windows paths are case-insensitive.
         var usages = sut.FindUsages(new SourceLocation("STEPS.CS", 5, 1));
 
         usages.Should().ContainSingle();
@@ -242,7 +328,48 @@ public class BindingMatchServiceTests
         var sut = new BindingMatchService();
         sut.Store(BuildSet(UndefinedFeature, RegistryWith(GivenBinding("my step"))));
 
-        // The step text doesn't match — it has no BindingLocations, so no location to match.
         sut.FindUsages(new SourceLocation("Steps.cs", 5, 1)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FindUsages_with_project_filter_restricts_to_matching_owner()
+    {
+        var sut     = new BindingMatchService();
+        var binding = GivenBinding("my step", file: "Steps.cs", line: 5);
+        sut.Store(BuildSet(DefinedFeature, RegistryWith(binding), docUri: Uri,       owner: OwnerA));
+        sut.Store(BuildSet(DefinedFeature, RegistryWith(binding), docUri: SecondUri, owner: OwnerB));
+
+        var usages = sut.FindUsages(new SourceLocation("Steps.cs", 5, 1), [OwnerA]);
+
+        usages.Should().ContainSingle()
+              .Which.FeatureDocumentId.Should().Be(Uri);
+    }
+
+    [Fact]
+    public void FindUsages_with_project_filter_includes_Unknown_entries()
+    {
+        var sut     = new BindingMatchService();
+        var binding = GivenBinding("my step", file: "Steps.cs", line: 5);
+        // Unknown entry — pre-baseline placeholder
+        sut.Store(BuildSet(DefinedFeature, RegistryWith(binding), docUri: Uri));
+
+        // Filter for OwnerA (a known project), but only Unknown entries exist.
+        var usages = sut.FindUsages(new SourceLocation("Steps.cs", 5, 1), [OwnerA]);
+
+        // Unknown entries are always included regardless of filter (backward compat during startup).
+        usages.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void FindUsages_with_null_filter_returns_all_projects()
+    {
+        var sut     = new BindingMatchService();
+        var binding = GivenBinding("my step", file: "Steps.cs", line: 5);
+        sut.Store(BuildSet(DefinedFeature, RegistryWith(binding), docUri: Uri,       owner: OwnerA));
+        sut.Store(BuildSet(DefinedFeature, RegistryWith(binding), docUri: SecondUri, owner: OwnerB));
+
+        var usages = sut.FindUsages(new SourceLocation("Steps.cs", 5, 1));
+
+        usages.Should().HaveCount(2);
     }
 }

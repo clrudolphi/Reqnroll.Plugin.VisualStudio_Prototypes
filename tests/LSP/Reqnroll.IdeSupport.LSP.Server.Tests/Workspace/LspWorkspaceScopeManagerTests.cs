@@ -1,3 +1,4 @@
+using MediatR;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
@@ -6,6 +7,7 @@ namespace Reqnroll.IdeSupport.LSP.Server.Tests.Workspace;
 public class LspWorkspaceScopeManagerTests : IDisposable
 {
     private readonly IDeveroomLogger _logger = Substitute.For<IDeveroomLogger>();
+    private readonly IMediator _mediator = Substitute.For<IMediator>();
     private readonly LspIdeScope _ideScope;
     private readonly LspWorkspaceScopeManager _sut;
     private readonly string _root1;
@@ -14,7 +16,7 @@ public class LspWorkspaceScopeManagerTests : IDisposable
     public LspWorkspaceScopeManagerTests()
     {
         _ideScope = new LspIdeScope(_logger);
-        _sut = new LspWorkspaceScopeManager(_ideScope, _logger);
+        _sut = new LspWorkspaceScopeManager(_ideScope, _logger, _mediator);
         _root1 = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         _root2 = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_root1);

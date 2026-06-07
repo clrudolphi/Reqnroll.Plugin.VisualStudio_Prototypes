@@ -129,7 +129,7 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 
         _logger.LogInfo($"Document closed: {uri}");
         _documentBufferService.Remove(uri);
-        _bindingMatchService.Invalidate(uri.ToString());
+        _bindingMatchService.InvalidateAllForDocument(uri.ToString());
 
         // Clear any squiggles the IDE may have retained for this URI.
         // LSP spec: sending an empty diagnostics list for a URI clears all previously

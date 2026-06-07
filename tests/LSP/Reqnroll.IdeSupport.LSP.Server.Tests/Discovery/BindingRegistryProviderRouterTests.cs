@@ -2,6 +2,7 @@ using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
@@ -10,11 +11,12 @@ namespace Reqnroll.IdeSupport.LSP.Server.Tests.Discovery;
 public class BindingRegistryProviderRouterTests : IDisposable
 {
     private readonly ILspWorkspaceScopeManager _scopeManager = Substitute.For<ILspWorkspaceScopeManager>();
-    private readonly IMediator _mediator = Substitute.For<IMediator>();
-    private readonly IDeveroomLogger _logger = Substitute.For<IDeveroomLogger>();
-    private readonly LspIdeScope _ideScope;
-    private readonly string _folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-    private readonly LspReqnrollProject _project;
+    private readonly IMediator                 _mediator     = Substitute.For<IMediator>();
+    private readonly IBindingMatchService      _matchService = Substitute.For<IBindingMatchService>();
+    private readonly IDeveroomLogger            _logger       = Substitute.For<IDeveroomLogger>();
+    private readonly LspIdeScope               _ideScope;
+    private readonly string                    _folder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+    private readonly LspReqnrollProject        _project;
 
     private static readonly DocumentUri FeatureUri =
         DocumentUri.FromFileSystemPath("/workspace/test.feature");
@@ -30,7 +32,8 @@ public class BindingRegistryProviderRouterTests : IDisposable
 
     public void Dispose() => _project.Dispose();
 
-    private BindingRegistryProviderRouter CreateSut() => new(_scopeManager, _mediator, _logger);
+    private BindingRegistryProviderRouter CreateSut() =>
+        new(_scopeManager, _mediator, _matchService, _logger);
 
     private void RaiseProjectDiscovered(LspReqnrollProject project)
         => _scopeManager.ProjectDiscovered += Raise.Event<Action<LspReqnrollProject>>(project);
@@ -43,7 +46,8 @@ public class BindingRegistryProviderRouterTests : IDisposable
     [Fact]
     public void GetRegistryForUri_returns_invalid_when_no_project_matches()
     {
-        _scopeManager.GetProjectForUri(Arg.Any<DocumentUri>()).Returns((LspReqnrollProject?)null);
+        _scopeManager.ResolvePrimaryOwner(Arg.Any<DocumentUri>())
+            .Returns((LspReqnrollProject?)null);
 
         using var sut = CreateSut();
 
@@ -53,7 +57,8 @@ public class BindingRegistryProviderRouterTests : IDisposable
     [Fact]
     public void GetRegistryForUri_returns_invalid_when_project_has_no_provider_registered()
     {
-        _scopeManager.GetProjectForUri(Arg.Any<DocumentUri>()).Returns(_project);
+        _scopeManager.ResolvePrimaryOwner(Arg.Any<DocumentUri>())
+            .Returns(_project);
 
         using var sut = CreateSut(); // no ProjectDiscovered raised → no provider in Properties
 
@@ -63,7 +68,8 @@ public class BindingRegistryProviderRouterTests : IDisposable
     [Fact]
     public void GetRegistryForUri_returns_the_providers_current_registry_for_a_discovered_project()
     {
-        _scopeManager.GetProjectForUri(Arg.Any<DocumentUri>()).Returns(_project);
+        _scopeManager.ResolvePrimaryOwner(Arg.Any<DocumentUri>())
+            .Returns(_project);
 
         using var sut = CreateSut();
         RaiseProjectDiscovered(_project);
@@ -97,6 +103,18 @@ public class BindingRegistryProviderRouterTests : IDisposable
         var act = () => RaiseProjectRemoved(_project);
 
         act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void OnProjectRemoved_invalidates_project_match_sets()
+    {
+        using var sut = CreateSut();
+        RaiseProjectDiscovered(_project);
+
+        RaiseProjectRemoved(_project);
+
+        _matchService.Received(1).InvalidateAllForProject(
+            Arg.Is<ProjectOwner>(o => o.ProjectFile == _project.ProjectFullName));
     }
 
     [Fact]

@@ -5,32 +5,36 @@ using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Services;
 
 public class GherkinDocumentTaggerService : IGherkinDocumentTaggerService
 {
-    private readonly IDeveroomTagParser _tagParser;
+    private readonly IDeveroomTagParser            _tagParser;
     private readonly IProjectBindingRegistryLookup _registryLookup;
-    private readonly ISemanticTokenService _semanticTokenService;
-    private readonly IBindingMatchService _bindingMatchService;
-    private readonly IDeveroomLogger _logger;
-    private readonly IDocumentBufferService _documentBufferService;
+    private readonly ISemanticTokenService         _semanticTokenService;
+    private readonly IBindingMatchService          _bindingMatchService;
+    private readonly IDeveroomLogger               _logger;
+    private readonly IDocumentBufferService        _documentBufferService;
+    private readonly ILspWorkspaceScopeManager     _scopeManager;
 
     public GherkinDocumentTaggerService(
-        IDocumentBufferService documentBufferService,
-        IDeveroomTagParser tagParser,
+        IDocumentBufferService        documentBufferService,
+        IDeveroomTagParser            tagParser,
         IProjectBindingRegistryLookup registryLookup,
-        ISemanticTokenService semanticTokenService,
-        IBindingMatchService bindingMatchService,
-        IDeveroomLogger logger)
+        ISemanticTokenService         semanticTokenService,
+        IBindingMatchService          bindingMatchService,
+        ILspWorkspaceScopeManager     scopeManager,
+        IDeveroomLogger               logger)
     {
         _documentBufferService = documentBufferService;
-        _tagParser = tagParser;
-        _registryLookup = registryLookup;
-        _semanticTokenService = semanticTokenService;
-        _bindingMatchService = bindingMatchService;
-        _logger = logger;
+        _tagParser             = tagParser;
+        _registryLookup        = registryLookup;
+        _semanticTokenService  = semanticTokenService;
+        _bindingMatchService   = bindingMatchService;
+        _scopeManager          = scopeManager;
+        _logger                = logger;
     }
 
     public Task<IReadOnlyCollection<DeveroomTag>> ParseAsync(DocumentUri uri, int? version)
@@ -54,20 +58,24 @@ public class GherkinDocumentTaggerService : IGherkinDocumentTaggerService
         // discovered or its first discovery run has not completed; DeveroomTagParser
         // gracefully skips step-matching in that case.
         var registry = _registryLookup.GetRegistryForUri(uri);
-        var tags = _tagParser.Parse(snapshot, registry);
+        var tags     = _tagParser.Parse(snapshot, registry);
         _logger.LogInfo($"Parsed {tags.Count} tags from document {uri}");
 
         // Store the new tags first so semantic-token encoding (which re-reads them) and the
         // match set below both observe the same tag collection.
         _documentBufferService.UpdateTags(uri, tags);
 
-        // Recompute and store the binding match set for this document. The matches are derived
-        // from the DefinedStep/UndefinedStep tags the parser just produced (each carries the
-        // step span and the computed MatchResult), so this is a projection — not a second match
-        // pass. Downstream features (Go to Definition, diagnostics, find usages) query the match
-        // service rather than walking the tag tree.
+        // Build the match set keyed by (uri, primaryOwner). If the primary owner is not yet
+        // known (no baseline received), store with ProjectOwner.Unknown so diagnostics can
+        // still work during startup. The Store call will evict the Unknown entry once a
+        // project-keyed entry arrives for the same document.
+        var primaryOwner = _scopeManager.ResolvePrimaryOwner(uri);
+        var owner = primaryOwner is not null
+            ? new ProjectOwner(primaryOwner.ProjectFullName, primaryOwner.TargetFrameworkMoniker)
+            : ProjectOwner.Unknown;
+
         var matchSet = FeatureBindingMatchSet.FromTags(
-            uri.ToString(), snapshot.Version, registry.Version, tags);
+            uri.ToString(), snapshot.Version, registry.Version, tags, owner);
         _bindingMatchService.Store(matchSet);
 
         // Evict the semantic token cache for this URI. The cache is keyed on (uri, documentVersion);
@@ -79,17 +87,38 @@ public class GherkinDocumentTaggerService : IGherkinDocumentTaggerService
         return Task.FromResult(tags);
     }
 
-    public Task ScanClosedFileAsync(DocumentUri uri, string text)
+    public Task ScanClosedFileAsync(DocumentUri uri, string text, LspReqnrollProject project)
     {
+        // Deterministic open-document guard. The handler that drives closed-file scans takes an
+        // open-URI snapshot before this runs, but that snapshot is racy: a file (especially one
+        // linked into multiple projects) can be opened between the snapshot and this call. The
+        // match set is keyed by URI + project, so writing here would clobber the open document's
+        // match set — with a null version and possibly a not-yet-discovered registry. If the
+        // document is open, its own ParseAsync pipeline owns the match set; skip the closed scan.
+        if (_documentBufferService.TryGet(uri, out _))
+        {
+            _logger.LogVerbose($"ScanClosedFile: '{uri}' is open; skipping closed-file scan.");
+            return Task.CompletedTask;
+        }
+
         var snapshot = new LspTextSnapshot(uri.ToString(), version: 0, text);
-        var registry = _registryLookup.GetRegistryForUri(uri);
+
+        // Use the project's own registry directly (bypasses the router) so that the match set
+        // for a shared/linked feature is computed against THIS project's bindings, not the
+        // primary owner's bindings. This is the per-(uri, project) correctness requirement (Q18 2B).
+        var registry = project.Properties.TryGetValue(typeof(ConnectorBindingRegistryProvider), out var obj)
+                       && obj is ConnectorBindingRegistryProvider provider
+            ? provider.Current
+            : _registryLookup.GetRegistryForUri(uri);   // fallback: router (should not happen after baseline)
+
         var tags = _tagParser.Parse(snapshot, registry);
 
+        var owner    = new ProjectOwner(project.ProjectFullName, project.TargetFrameworkMoniker);
         var matchSet = FeatureBindingMatchSet.FromTags(
-            uri.ToString(), documentVersion: null, registry.Version, tags);
+            uri.ToString(), documentVersion: null, registry.Version, tags, owner);
         _bindingMatchService.Store(matchSet);
 
-        _logger.LogVerbose($"ScanClosedFile: stored {matchSet.Steps.Count} step(s) for {uri}");
+        _logger.LogVerbose($"ScanClosedFile: stored {matchSet.Steps.Count} step(s) for {uri} [{project.ProjectName}]");
         return Task.CompletedTask;
     }
 }

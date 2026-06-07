@@ -6,6 +6,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Document;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 
@@ -19,19 +20,23 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 /// </para>
 /// </summary>
 /// <remarks>
-/// Registered via <c>options.OnRequest</c> in <c>Program.cs</c> (same pattern as
-/// <see cref="SemanticTokensHandler"/>) to avoid dynamic capability registration and the
-/// ambiguity that arises when both the Reqnroll server and the C# server claim
-/// <c>textDocument/references</c> for <c>.cs</c> files. See design-doc Q13.
+/// Q18 2B: the scope is restricted to the projects that own the queried <c>.cs</c> file.
+/// This prevents cross-project bleed when two projects have step definitions at the same
+/// source location (same file name + line in a shared binding class).
 /// </remarks>
 public sealed class StepReferencesHandler
 {
-    private readonly IBindingMatchService _matchService;
-    private readonly IDeveroomLogger      _logger;
+    private readonly IBindingMatchService      _matchService;
+    private readonly ILspWorkspaceScopeManager _scopeManager;
+    private readonly IDeveroomLogger            _logger;
 
-    public StepReferencesHandler(IBindingMatchService matchService, IDeveroomLogger logger)
+    public StepReferencesHandler(
+        IBindingMatchService      matchService,
+        ILspWorkspaceScopeManager scopeManager,
+        IDeveroomLogger            logger)
     {
         _matchService = matchService;
+        _scopeManager = scopeManager;
         _logger       = logger;
     }
 
@@ -56,7 +61,16 @@ public sealed class StepReferencesHandler
         var column = request.Position.Character + 1;
         var bindingLocation = new SourceLocation(filePath, line, column);
 
-        var usages = _matchService.FindUsages(bindingLocation);
+        // Q18 2B: restrict search to the projects that own this .cs file.
+        // ResolveOwners returns an empty list only when no project claims the file; in that
+        // case pass null to FindUsages so it searches all cached match sets (backward compat).
+        var owners = _scopeManager.ResolveOwners(uri);
+        IReadOnlyCollection<ProjectOwner>? projectFilter = owners.Count > 0
+            ? owners.Select(p => new ProjectOwner(p.ProjectFullName, p.TargetFrameworkMoniker))
+                    .ToArray()
+            : null;
+
+        var usages = _matchService.FindUsages(bindingLocation, projectFilter);
 
         if (usages.Count == 0)
         {

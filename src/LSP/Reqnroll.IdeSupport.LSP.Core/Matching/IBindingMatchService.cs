@@ -5,33 +5,44 @@ using Reqnroll.IdeSupport.LSP.Core.Discovery;
 namespace Reqnroll.IdeSupport.LSP.Core.Matching;
 
 /// <summary>
-/// The Binding Match Service of section 3 of the LSP IDE Support design: a cache of step
-/// binding matches keyed by feature document id, plus a reverse index from binding source
-/// locations back to the feature steps that resolve to them.
+/// Cache of step binding matches keyed by <see cref="MatchSetKey"/> (document URI + owning
+/// project), plus a reverse index from binding source locations back to the feature steps that
+/// resolve to them.
 /// </summary>
 /// <remarks>
 /// The cache is populated whenever a feature document is (re)parsed (see
 /// <c>GherkinDocumentTaggerService</c>) and invalidated when the binding registry changes.
-/// It is URI-agnostic: the server layer keys entries by <c>DocumentUri.ToString()</c>,
-/// matching <c>IDocumentBufferService</c>.
+/// A shared/linked feature file may have one entry per owning project; present the primary
+/// owner's entry for rendering (semantic tokens, diagnostics).
 /// </remarks>
 public interface IBindingMatchService
 {
-    /// <summary>Stores (replacing any prior entry for the same <see cref="FeatureBindingMatchSet.DocumentId"/>).</summary>
+    /// <summary>Stores (replacing any prior entry for the same <see cref="FeatureBindingMatchSet.Key"/>).
+    /// If the incoming key has a known <see cref="ProjectOwner"/>, evicts any
+    /// <see cref="ProjectOwner.Unknown"/> placeholder for the same document.</summary>
     void Store(FeatureBindingMatchSet matchSet);
 
-    /// <summary>Returns the cached match set for a document, or <see cref="FeatureBindingMatchSet.Empty"/>.</summary>
-    bool TryGet(string documentId, out FeatureBindingMatchSet matchSet);
+    /// <summary>Returns the cached match set for the given key, or <see cref="FeatureBindingMatchSet.Empty"/>.</summary>
+    bool TryGet(MatchSetKey key, out FeatureBindingMatchSet matchSet);
 
-    /// <summary>Drops the cached match set for a single document.</summary>
-    void Invalidate(string documentId);
+    /// <summary>Drops all cached entries for the given document URI regardless of owner (used on DidClose).</summary>
+    void InvalidateAllForDocument(string documentId);
 
-    /// <summary>Drops all cached match sets (e.g. on a full registry replacement).</summary>
+    /// <summary>Drops all cached entries for the given project (used on project unload).</summary>
+    void InvalidateAllForProject(ProjectOwner owner);
+
+    /// <summary>Drops all cached match sets (emergency reset).</summary>
     void InvalidateAll();
 
     /// <summary>
     /// Returns every cached feature step that resolves to a binding at <paramref name="bindingLocation"/>.
+    /// Pass <paramref name="projectFilter"/> to restrict results to specific owning projects;
+    /// pass <see langword="null"/> to search across all projects.
+    /// <see cref="ProjectOwner.Unknown"/> entries are always included regardless of the filter
+    /// (they are pre-baseline placeholders that are visible to all callers).
     /// Backs Find Usages (F14) and Code Lens usage counts (F18).
     /// </summary>
-    IReadOnlyList<StepBindingMatch> FindUsages(SourceLocation bindingLocation);
+    IReadOnlyList<StepBindingMatch> FindUsages(
+        SourceLocation bindingLocation,
+        IReadOnlyCollection<ProjectOwner>? projectFilter = null);
 }

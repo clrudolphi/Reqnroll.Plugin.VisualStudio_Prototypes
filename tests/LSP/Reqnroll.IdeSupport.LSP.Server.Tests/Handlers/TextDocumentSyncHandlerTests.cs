@@ -141,7 +141,7 @@ public class TextDocumentSyncHandlerTests
 
         result.Should().Be(Unit.Value);
         _bufferService.TryGet(FeatureUri, out _).Should().BeFalse();
-        _bindingMatchService.Received(1).Invalidate(FeatureUri.ToString());
+        _bindingMatchService.Received(1).InvalidateAllForDocument(FeatureUri.ToString());
 
         // No parse/match notification — the close path does not publish MatchCacheChangedNotification.
         await _mediator.DidNotReceiveWithAnyArgs().Publish(default!, default);
@@ -225,7 +225,7 @@ public class TextDocumentSyncHandlerTests
 
         result.Should().Be(Unit.Value);
         // Closing a .cs file must not invalidate feature match state; bindings are retained until rebuild.
-        _bindingMatchService.DidNotReceiveWithAnyArgs().Invalidate(default!);
+        _bindingMatchService.DidNotReceiveWithAnyArgs().InvalidateAllForDocument(default!);
         // No diagnostics push — the server does not own diagnostics for .cs files.
         _languageServer.DidNotReceive().SendNotification(Arg.Any<string>(), Arg.Any<PublishDiagnosticsParams>());
     }

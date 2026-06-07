@@ -63,8 +63,8 @@ internal sealed class VsProjectEventMonitor : IDisposable
     // ── Initial flush ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Sends <c>reqnroll/projectLoaded</c> for every project currently in the solution.
-    /// Call once immediately after the server has initialised.
+    /// Sends <c>reqnroll/projectLoaded</c> and <c>reqnroll/projectFiles</c> for every project
+    /// currently in the solution.  Call once immediately after the server has initialised.
     /// </summary>
     public async Task SendInitialProjectsAsync(CancellationToken ct)
     {
@@ -77,13 +77,18 @@ internal sealed class VsProjectEventMonitor : IDisposable
         foreach (Project project in solution.Projects)
         {
             await TrySendProjectLoadedAsync(project, ct).ConfigureAwait(false);
+            await TrySendProjectFilesAsync(project, ct).ConfigureAwait(false);
         }
     }
 
     // ── DTE event handlers ────────────────────────────────────────────────────
 
     private void OnProjectAdded(Project project)
-        => FireAndForget(() => TrySendProjectLoadedAsync(project, CancellationToken.None));
+        => FireAndForget(async () =>
+        {
+            await TrySendProjectLoadedAsync(project, CancellationToken.None).ConfigureAwait(false);
+            await TrySendProjectFilesAsync(project, CancellationToken.None).ConfigureAwait(false);
+        });
 
     private void OnProjectRemoved(Project project)
         => FireAndForget(() => TrySendProjectUnloadedAsync(project, CancellationToken.None));
@@ -99,7 +104,8 @@ internal sealed class VsProjectEventMonitor : IDisposable
     private void OnBuildDone(vsBuildScope scope, vsBuildAction action)
     {
         // After any successful build re-send all projects so the server gets updated
-        // OutputAssemblyPath values (the path may have changed if the active configuration changed).
+        // OutputAssemblyPath values and a fresh file-membership baseline (build may have changed
+        // conditional compilation/references that affect which files are included).
         if (action == vsBuildAction.vsBuildActionBuild ||
             action == vsBuildAction.vsBuildActionRebuildAll)
         {
@@ -173,6 +179,76 @@ internal sealed class VsProjectEventMonitor : IDisposable
         {
             _trace.TraceEvent(TraceEventType.Warning, 0,
                 "VsProjectEventMonitor: Failed to send projectUnloaded: {0}", ex.Message);
+        }
+    }
+
+    private async Task TrySendProjectFilesAsync(Project project, CancellationToken ct)
+    {
+        try
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+
+            if (!IsSolutionProject(project))
+                return;
+
+            var tfm     = VsUtils.GetTargetFrameworkMoniker(project) ?? string.Empty;
+            var entries = BuildProjectFileEntries(project);
+
+            var paramsObj = new
+            {
+                projectFile            = project.FullName,
+                targetFrameworkMoniker = tfm,
+                kind                   = 0,      // ProjectFilesKind.Baseline = 0
+                files                  = entries,
+            };
+
+            var paramsJson = JsonConvert.SerializeObject(paramsObj, Formatting.None);
+            await _pipe.SendNotificationToServerAsync("reqnroll/projectFiles", paramsJson, ct)
+                       .ConfigureAwait(false);
+
+            _trace.TraceInformation(
+                "VsProjectEventMonitor: Sent projectFiles baseline for '{0}' ({1} file(s))",
+                project.Name, entries.Length);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _trace.TraceEvent(TraceEventType.Warning, 0,
+                "VsProjectEventMonitor: Failed to send projectFiles for '{0}': {1}",
+                project.Name, ex.Message);
+        }
+    }
+
+    private object[] BuildProjectFileEntries(Project project)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        try
+        {
+            var entries = new List<object>();
+            foreach (var item in VsUtils.GetPhysicalFileProjectItems(project))
+            {
+                var path = VsUtils.GetFilePath(item);
+                if (path is null)
+                    continue;
+
+                int role;
+                var ext = Path.GetExtension(path);
+                if (ext.Equals(".feature", StringComparison.OrdinalIgnoreCase))
+                    role = 0;   // ProjectFileRole.Feature = 0
+                else if (ext.Equals(".cs", StringComparison.OrdinalIgnoreCase))
+                    role = 1;   // ProjectFileRole.Binding = 1
+                else
+                    continue;
+
+                entries.Add(new { path, role, added = true });
+            }
+            return entries.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _trace.TraceEvent(TraceEventType.Warning, 0,
+                "VsProjectEventMonitor: Could not enumerate project items for '{0}': {1}",
+                project.Name, ex.Message);
+            return Array.Empty<object>();
         }
     }
 

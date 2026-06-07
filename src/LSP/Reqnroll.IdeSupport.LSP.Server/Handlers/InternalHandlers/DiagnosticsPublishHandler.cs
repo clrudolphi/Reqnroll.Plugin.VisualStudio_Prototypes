@@ -7,6 +7,7 @@ using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
 
@@ -24,24 +25,30 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
 /// <em>complete</em> diagnostic set for a URI; sending a partial set clears the diagnostics not
 /// included.  The <see cref="IDiagnosticsAggregator"/> combines both sources (parse errors and
 /// binding mismatches) into one list before this handler sends the single push.
+///
+/// For shared/linked features the primary owner's match set is used (Q18 2A/2B: LSP provides
+/// one result per URI with no project context, so one owner must be chosen).
 /// </remarks>
 public sealed class DiagnosticsPublishHandler : INotificationHandler<MatchCacheChangedNotification>
 {
-    private readonly IDocumentBufferService  _documentBufferService;
-    private readonly IBindingMatchService    _bindingMatchService;
-    private readonly IDiagnosticsAggregator  _aggregator;
-    private readonly ILanguageServerFacade   _languageServer;
-    private readonly IDeveroomLogger          _logger;
+    private readonly IDocumentBufferService   _documentBufferService;
+    private readonly IBindingMatchService     _bindingMatchService;
+    private readonly ILspWorkspaceScopeManager _scopeManager;
+    private readonly IDiagnosticsAggregator   _aggregator;
+    private readonly ILanguageServerFacade    _languageServer;
+    private readonly IDeveroomLogger           _logger;
 
     public DiagnosticsPublishHandler(
-        IDocumentBufferService  documentBufferService,
-        IBindingMatchService    bindingMatchService,
-        IDiagnosticsAggregator  aggregator,
-        ILanguageServerFacade   languageServer,
-        IDeveroomLogger          logger)
+        IDocumentBufferService    documentBufferService,
+        IBindingMatchService      bindingMatchService,
+        ILspWorkspaceScopeManager scopeManager,
+        IDiagnosticsAggregator    aggregator,
+        ILanguageServerFacade     languageServer,
+        IDeveroomLogger            logger)
     {
         _documentBufferService = documentBufferService;
         _bindingMatchService   = bindingMatchService;
+        _scopeManager          = scopeManager;
         _aggregator            = aggregator;
         _languageServer        = languageServer;
         _logger                = logger;
@@ -57,7 +64,16 @@ public sealed class DiagnosticsPublishHandler : INotificationHandler<MatchCacheC
             return Task.CompletedTask;
         }
 
-        _bindingMatchService.TryGet(uri.ToString(), out var matchSet);
+        // Look up the match set for the primary owner's (uri, project) slot.
+        // Falls back to ProjectOwner.Unknown when no primary owner has been resolved yet
+        // (pre-baseline startup period).
+        var primaryOwner = _scopeManager.ResolvePrimaryOwner(uri);
+        var matchKey = primaryOwner is not null
+            ? new MatchSetKey(uri.ToString(),
+                new ProjectOwner(primaryOwner.ProjectFullName, primaryOwner.TargetFrameworkMoniker))
+            : MatchSetKey.ForUnknownProject(uri.ToString());
+
+        _bindingMatchService.TryGet(matchKey, out var matchSet);
         // TryGet returns Empty when not found, so matchSet is never null here.
 
         var gherkinDiagnostics = _aggregator.Aggregate(buffer.Tags, matchSet);
