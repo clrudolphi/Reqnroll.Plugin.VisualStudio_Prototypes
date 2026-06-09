@@ -1,5 +1,6 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Specs.Support;
 
@@ -25,6 +26,7 @@ public sealed class LspScenarioContext
     public int LastVersion { get; set; }
     public SemanticTokens? LastTokens { get; set; }
     public LocationOrLocationLinks? LastReferences { get; set; }
+    public FindStepUsagesResponse? LastFindStepUsages { get; set; }
 
     public DocumentUri UriFor(string relativeName)
         => DocumentUri.FromFileSystemPath(Path.Combine(WorkspaceFolder, relativeName));

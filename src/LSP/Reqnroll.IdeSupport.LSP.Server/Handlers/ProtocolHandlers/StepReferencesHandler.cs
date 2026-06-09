@@ -5,6 +5,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
+using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
@@ -26,18 +27,21 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 /// </remarks>
 public sealed class StepReferencesHandler
 {
-    private readonly IBindingMatchService      _matchService;
-    private readonly ILspWorkspaceScopeManager _scopeManager;
-    private readonly IDeveroomLogger            _logger;
+    private readonly IBindingMatchService         _matchService;
+    private readonly ILspWorkspaceScopeManager    _scopeManager;
+    private readonly IProjectBindingRegistryLookup _registryLookup;
+    private readonly IDeveroomLogger               _logger;
 
     public StepReferencesHandler(
-        IBindingMatchService      matchService,
-        ILspWorkspaceScopeManager scopeManager,
-        IDeveroomLogger            logger)
+        IBindingMatchService          matchService,
+        ILspWorkspaceScopeManager     scopeManager,
+        IProjectBindingRegistryLookup registryLookup,
+        IDeveroomLogger               logger)
     {
-        _matchService = matchService;
-        _scopeManager = scopeManager;
-        _logger       = logger;
+        _matchService   = matchService;
+        _scopeManager   = scopeManager;
+        _registryLookup = registryLookup;
+        _logger         = logger;
     }
 
     public Task<LocationOrLocationLinks?> Handle(
@@ -74,10 +78,21 @@ public sealed class StepReferencesHandler
 
         if (usages.Count == 0)
         {
-            _logger.LogVerbose(
-                $"StepReferencesHandler: no usages for binding at {filePath}:{line}");
-            return Task.FromResult<LocationOrLocationLinks?>(
-                new LocationOrLocationLinks());
+            // P1: distinguish "not a binding at this location" from "binding with 0 matching steps".
+            // HasBindingAtLocation checks the per-project registries for any binding spanning the
+            // query line. The three-state contract (null/empty/locations) is the correct design,
+            // but OmniSharp's LocationOrLocationLinks JSON converter does not support null
+            // serialization, so both "not a binding" and "0 usages" return an empty response over
+            // textDocument/references. The VS client (P2) will use a custom reqnroll/findStepUsages
+            // request that can carry the full three-state result.
+            var hasBinding = _registryLookup.HasBindingAtLocation(uri, bindingLocation);
+            if (!hasBinding)
+                _logger.LogVerbose(
+                    $"StepReferencesHandler: no binding at {filePath}:{line}");
+            else
+                _logger.LogVerbose(
+                    $"StepReferencesHandler: binding at {filePath}:{line} has 0 usages");
+            return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
         _logger.LogVerbose(

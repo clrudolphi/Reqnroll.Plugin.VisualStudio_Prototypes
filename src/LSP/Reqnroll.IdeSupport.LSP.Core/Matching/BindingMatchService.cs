@@ -98,6 +98,16 @@ public sealed class BindingMatchService : IBindingMatchService
     }
 
     private static bool SameLocation(SourceLocation a, SourceLocation b)
-        => string.Equals(a.SourceFile, b.SourceFile, StringComparison.OrdinalIgnoreCase)
-           && a.SourceFileLine == b.SourceFileLine;
+    {
+        if (!string.Equals(a.SourceFile, b.SourceFile, StringComparison.OrdinalIgnoreCase))
+            return false;
+        // Roslyn-path bindings span [attribute-line, body-end]; connector-path bindings only
+        // store the method-body start (no end). Allow up to 2 lines of backward leeway so a
+        // caret placed on the binding attribute (typically 1-2 lines above the body start)
+        // resolves correctly against connector-path entries.
+        var endLine = a.SourceFileEndLine ?? a.SourceFileLine;
+        const int attributeLeeway = 2;
+        return b.SourceFileLine >= (a.SourceFileLine - attributeLeeway)
+               && b.SourceFileLine <= endLine;
+    }
 }

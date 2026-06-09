@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Pipelines;
@@ -47,6 +48,14 @@ internal sealed class LspInterceptingPipe : IDisposable
 
     // Serialises injected writes against the send pump so frames are not interleaved.
     private readonly SemaphoreSlim _injectLock = new SemaphoreSlim(1, 1);
+
+    // ── Owned request/response correlation ─────────────────────────────────
+    // Requests injected by us use a string id with this prefix so they never collide
+    // with VS's own numeric JSON-RPC ids.  The receive pump recognises the prefix and
+    // consumes the response before it can be forwarded to VS (which never sent the request).
+    private const string RequestIdPrefix = "reqnroll-rpc-";
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<JToken?>> _pendingRequests
+        = new ConcurrentDictionary<string, TaskCompletionSource<JToken?>>();
 
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
     private CancellationTokenSource? _linkedCts;
@@ -140,6 +149,10 @@ internal sealed class LspInterceptingPipe : IDisposable
                     await WriteFrameAsync(destination, frame.RawBytes, ct).ConfigureAwait(false);
                     continue;
                 }
+
+                // Consume correlated responses before external interceptors so they never reach VS.
+                if (direction == LspMessageDirection.Receive && TryCompleteCorrelatedResponse(frame.Body))
+                    continue;
 
                 var message = new LspMessage(direction, frame.Body, DateTimeOffset.Now);
                 var result  = await RunInterceptorsAsync(message, interceptors, ct).ConfigureAwait(false);
@@ -390,6 +403,103 @@ internal sealed class LspInterceptingPipe : IDisposable
         }
     }
 
+    // ── Request injection and response correlation (VS → Server → back) ──────
+
+    /// <summary>
+    /// Injects a JSON-RPC request into the server-bound stream and awaits the server's response.
+    /// The response is <b>consumed</b> by the receive pump and never forwarded to VS.
+    /// </summary>
+    /// <param name="method">LSP method name, e.g. <c>textDocument/references</c>.</param>
+    /// <param name="paramsJson">Already-serialized JSON for <c>params</c>, or <c>null</c> to omit it.</param>
+    /// <returns>
+    /// The <c>result</c> field of the server's response as a <see cref="JToken"/> (may be a
+    /// <see cref="JArray"/>, <see cref="JObject"/>, or primitive), or <c>null</c> if the server
+    /// returned a JSON-RPC error, the result was JSON null, or the operation was cancelled.
+    /// </returns>
+    public async Task<JToken?> SendRequestToServerAsync(
+        string method,
+        string? paramsJson,
+        CancellationToken cancellationToken)
+    {
+        if (_disposed) return null;
+
+        var id  = RequestIdPrefix + Guid.NewGuid().ToString("N");
+        var tcs = new TaskCompletionSource<JToken?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingRequests[id] = tcs;
+
+        // Register cancellation before sending to avoid the race where the token is already
+        // cancelled at the point we would have registered.
+        var reg = cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+        try
+        {
+            var body = string.IsNullOrEmpty(paramsJson)
+                ? $"{{\"jsonrpc\":\"2.0\",\"id\":{JsonEscape(id)},\"method\":{JsonEscape(method)}}}"
+                : $"{{\"jsonrpc\":\"2.0\",\"id\":{JsonEscape(id)},\"method\":{JsonEscape(method)},\"params\":{paramsJson}}}";
+
+            var bodyBytes   = Utf8NoBom.GetBytes(body);
+            var headerText  = $"Content-Length: {bodyBytes.Length}\r\n\r\n";
+            var headerBytes = Utf8NoBom.GetBytes(headerText);
+
+            await _injectLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var memory = _serverPipe.Output.GetMemory(headerBytes.Length + bodyBytes.Length);
+                headerBytes.CopyTo(memory);
+                bodyBytes.CopyTo(memory.Slice(headerBytes.Length));
+                _serverPipe.Output.Advance(headerBytes.Length + bodyBytes.Length);
+                await _serverPipe.Output.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                _traceSource.TraceInformation(
+                    "LspInterceptingPipe: Injected request '{0}' id={1} ({2} bytes)", method, id, bodyBytes.Length);
+            }
+            finally
+            {
+                _injectLock.Release();
+            }
+
+            return await tcs.Task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _traceSource.TraceInformation(
+                "LspInterceptingPipe: Request '{0}' id={1} cancelled", method, id);
+            return null;
+        }
+        finally
+        {
+            reg.Dispose();
+            _pendingRequests.TryRemove(id, out _);
+        }
+    }
+
+    /// <summary>
+    /// Checks whether <paramref name="body"/> is a JSON-RPC response to one of our injected
+    /// requests.  If so, completes the awaiting <see cref="TaskCompletionSource{T}"/> and
+    /// returns <c>true</c> so the pump skips forwarding the frame to VS.
+    /// </summary>
+    private bool TryCompleteCorrelatedResponse(JObject body)
+    {
+        // A JSON-RPC response has an "id" and either "result" or "error", but no "method".
+        if (body.ContainsKey("method")) return false;
+
+        var idToken = body["id"];
+        if (idToken is null) return false;
+
+        var id = idToken.Value<string>();
+        if (id is null || !id.StartsWith(RequestIdPrefix, StringComparison.Ordinal)) return false;
+
+        if (!_pendingRequests.TryRemove(id, out var tcs)) return false;
+
+        if (body.ContainsKey("error"))
+            tcs.TrySetResult(null);
+        else
+            tcs.TrySetResult(body["result"]);
+
+        _traceSource.TraceInformation(
+            "LspInterceptingPipe: Consumed correlated response id={0}", id);
+        return true;
+    }
+
     private static string JsonEscape(string value)
         => Newtonsoft.Json.JsonConvert.ToString(value); // produces "\"value\""
 
@@ -405,6 +515,11 @@ internal sealed class LspInterceptingPipe : IDisposable
         _linkedCts?.Dispose();
         _cts.Dispose();
         _injectLock.Dispose();
+
+        // Fault any in-flight injected requests so callers don't hang.
+        foreach (var kv in _pendingRequests)
+            kv.Value.TrySetCanceled();
+        _pendingRequests.Clear();
 
         _toVsPipe.Writer.Complete();
         _fromVsPipe.Writer.Complete();

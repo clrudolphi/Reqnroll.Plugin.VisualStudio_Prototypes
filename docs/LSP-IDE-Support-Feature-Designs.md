@@ -918,27 +918,31 @@ Whether IDEs reliably dispatch based on caret position within a file that has mu
 
 | Direction | Method | Purpose |
 |-----------|--------|---------|
-| Client → Server | `textDocument/references` (at attribute position) | Find all `.feature` steps matching this binding |
-| Server → Client | `Location[]` response | Step locations in `.feature` files |
+| VS Extension → Server | `reqnroll/findStepUsages` (custom, owned pipe) | Three-state response: `{isBinding:false}` / `{isBinding:true,locations:[]}` / `{isBinding:true,locations:[...]}` |
+| Client → Server | `textDocument/references` (at attribute position) | Two-state fallback (VS Code, Rider, spec tests): empty = no match or not a binding |
+| Server → Client | `Location[]` / `FindStepUsagesResponse` | Step locations in `.feature` files |
 
-#### Sequence diagram
+#### Sequence diagram (Visual Studio — as-built)
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant IDE
+    participant Cmd as FindStepUsagesCommand (VS.E)
+    participant Pipe as LspInterceptingPipe
+    participant FSH as FindStepUsagesHandler (LSP Server)
+    participant BM as BindingMatchService
+    participant FAR as IFindAllReferencesService (VS)
 
-    box LightBlue LSP Server
-        participant SRH as StepReferencesHandler
-        participant BM as Binding Match Service
-    end
-
-    User->>IDE: Find All References (caret on binding attribute)
-    IDE->>SRH: textDocument/references (csURI, position, includeDeclaration)
-    SRH->>BM: Lookup all feature steps matching binding at (csURI, position)
-    BM-->>SRH: Location[] from match cache (feature file locations)
-    SRH-->>IDE: Location[] response
-    IDE-->>User: References panel populated with .feature step locations
+    User->>Cmd: Invoke (Extensions menu or C# editor context menu)
+    Cmd->>Cmd: GetActiveTextViewAsync → (fileUri, line0, char0)
+    Cmd->>Pipe: SendRequestToServerAsync("reqnroll/findStepUsages", params)
+    Pipe->>FSH: inject JSON-RPC request (id="reqnroll-far-{guid}")
+    FSH->>BM: FindUsages(SourceLocation)
+    BM-->>FSH: StepBindingMatch[] from match cache
+    FSH-->>Pipe: FindStepUsagesResponse {isBinding, locations[]}
+    Pipe-->>Cmd: JToken result (response consumed, never forwarded to VS)
+    Cmd->>FAR: StartSearch(label) → AddSource(FeatureReferencesDataSource)
+    FAR-->>User: Find All References window populated with .feature step locations
 ```
 
 #### Implementation status
@@ -947,22 +951,22 @@ F14 is **implemented**. The as-built mapping is:
 
 | Design element | As-built |
 |---|---|
-| `StepReferencesHandler` registered for `textDocument/references` | Registered via `options.OnRequest` (same static-registration pattern as semantic tokens) to avoid OmniSharp dynamic-registration ambiguity with the C# language server on `.cs` files (see Q13) |
+| `StepReferencesHandler` registered for `textDocument/references` | Registered via `options.OnRequest` (same static-registration pattern as semantic tokens) to avoid OmniSharp dynamic-registration ambiguity with the C# language server on `.cs` files (see Q13). Retained for VS Code / Rider / spec-test compatibility. |
+| `FindStepUsagesHandler` registered for `reqnroll/findStepUsages` | Custom request handler ([FindStepUsagesHandler.cs](../src/LSP/Reqnroll.IdeSupport.LSP.Server/Handlers/ProtocolHandlers/FindStepUsagesHandler.cs)). Delivers the full three-state contract: `{isBinding:false}` = not a binding; `{isBinding:true, locations:[]}` = 0 usages; `{isBinding:true, locations:[...]}` = usages. Response type: `FindStepUsagesResponse` ([Protocol/FindStepUsagesResponse.cs](../src/LSP/Reqnroll.IdeSupport.LSP.Server/Protocol/FindStepUsagesResponse.cs)). Each location includes `stepText` (extracted from in-memory snapshot), `keyword`, `scenarioName`, `projectName`. **Protocol note:** returns `{isBinding:false}` rather than JSON null — OmniSharp's `OnRequest` framework sends an error response for null returns from custom-method handlers, so `IsBinding=false` is the "not a binding" sentinel. |
 | Binding location lookup | `IBindingMatchService.FindUsages(SourceLocation)` — iterates all cached `FeatureBindingMatchSet` entries and returns every `StepBindingMatch` whose `BindingLocations` match the supplied file + line (column is ignored; line is 1-based) |
 | Document ID on match results | `StepBindingMatch.FeatureDocumentId` (added for F14) carries the feature file's document URI, eliminating the need for a tuple return from `FindUsages` |
-| LSP position → `SourceLocation` conversion | `StepReferencesHandler` converts 0-based LSP line/character to 1-based `SourceLocation(file, line+1, char+1)` |
+| LSP position → `SourceLocation` conversion | Handlers convert 0-based LSP line/character to 1-based `SourceLocation(file, line+1, char+1)` |
 | `GherkinRange` → LSP `Range` | `GherkinRangeExtensions.ToLspRange()` (new `LSP.Server`-layer extension); pure offset-to-line geometry lives in `GherkinRange.ResolveOffset` (`LSP.Core`) |
 | Workspace-wide scan on startup | `BindingRegistryChangedNotification.IsFullReplacement` flag (added for F14): `true` when fired by the Connector / reflection path, `false` for Roslyn incremental. A full replacement triggers `BindingRegistryChangedHandler.ScanAllFeatureFilesAsync`, which calls `IGherkinDocumentTaggerService.ScanClosedFileAsync` for every `.feature` file in the project folder not already held in the open-document buffer. **As-built limitation, with chosen resolution**: this folder glob *misses* linked feature files outside the project folder and *wrongly admits* feature files excluded from the `.csproj`. Per the [membership-index design](LSP-IDE-Support-Architecture.md#project-membership-the-path--projects-index), closed-file enumeration moves from the folder glob to the project's `reqnroll/projectFiles` baseline — scan exactly the feature files the project actually includes, links and all, and nothing it excludes. See [Q17](LSP-IDE-Support-Open-Questions.md). |
 | Incremental update on Roslyn edit | `IsFullReplacement = false` → only currently open feature files are re-parsed; closed files retain their cached match sets |
+| VS command — Surface 1 (Extensions menu) | `FindStepUsagesCommand` ([FindStepUsages/FindStepUsagesCommand.cs](../src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Extension/FindStepUsages/FindStepUsagesCommand.cs)) — `[VisualStudioContribution]` VS.Extensibility command; `GetActiveTextViewAsync` → `(fileUri, line0, char0)` → `FindStepUsagesService.FindUsagesAsync` → `FindStepUsagesRenderer.RenderAsync`. |
+| VS command — Surface 2 (C# editor context menu) | Same command, second placement: `CommandPlacement.VsctParent(guidSHLMainMenu, IDG_VS_CODEWIN_NAVIGATETOLOCATION=0x02B1, priority=0x0100)`. Item appears next to "Find All References" in the code-window context menu. No `.vsct`, no VSSDK command table — targets the shell's built-in group directly. Requires experimental-instance reset after first deploy. |
+| VS command — Surface 3 (Shift+F12 takeover) | **Deferred.** Would require an `IOleCommandTarget` editor command filter (MEF) intercepting GUID `{1496A755-94DE-11D0-8C3F-00C04FC2AAE2}` ID 97. Not implemented. |
+| Owned-pipe RPC | `LspInterceptingPipe.SendRequestToServerAsync` injects a JSON-RPC request with id prefix `reqnroll-far-{guid}`. `TryCompleteCorrelatedResponse` consumes the matching response (never forwarded to VS) and completes the awaiting TCS. The response bypasses the LSP inspector log — the `FindStepUsagesService` file logger is the only diagnostic window. |
+| Results rendering | `FindStepUsagesRenderer` switches to UI thread (`JoinableTaskFactory`), locates `IFindAllReferencesService` via `SVsFindAllReferences`, calls `StartSearch(label)` → `window.Manager.AddSource(FeatureReferencesDataSource)`. `FeatureReferencesDataSource` pushes all `FeatureReferenceTableEntry` items in `Subscribe`. |
+| DI injection | `FindStepUsagesState` singleton registered in `ExtensionEntrypoint.InitializeServices`. `ReqnrollLanguageClient` populates it on server-init / clears on dispose. `FindStepUsagesCommand` injects `(FindStepUsagesState, TraceSource)` only — both guaranteed resolvable from the VS.Extensibility DI container. (Injecting `ReqnrollLanguageClient` directly caused silent construction failure because contribution classes are not resolvable as injection targets.) |
 
-> **As-built note — VS "Find All References" does not integrate automatically.** When tested in the VS Experimental Instance, the VS built-in **Find All References** command did **not** route `textDocument/references` to the Reqnroll LSP server. Two failure modes were observed:
->
-> - Invoking on the **attribute keyword itself** (e.g. the word `Given` in `[Given("…")]`) found all uses of that attribute type across the solution — the standard C# references result, not feature-file steps.
-> - Invoking on the **binding expression string** found all identical string literals in C# code — again a C# result, not feature-file steps.
->
-> This confirms that VS does not dispatch `textDocument/references` to secondary LSP servers for `.cs` files based on caret position; the C# language server intercepts the request unconditionally. Q13 is therefore **resolved as "dispatch is unreliable"** and R2's predicted fallback applies.
->
-> **Action item (next session):** Build a custom VS.Extensibility command — provisionally `ReqnrollFindStepUsagesCommand` — that explicitly invokes `textDocument/references` (or a custom `reqnroll/findStepUsages` request) against the Reqnroll LSP server and populates a results pane. The server-side handler (`StepReferencesHandler`) is already implemented and tested; the work is entirely on the VS client side.
+> **As-built note — VS "Find All References" does not integrate automatically.** VS does not dispatch `textDocument/references` to secondary LSP servers for `.cs` files; the C# language server intercepts unconditionally. Q13 is **resolved as "dispatch is unreliable"**. The custom VS.Extensibility command (`FindStepUsagesCommand`) instead injects `reqnroll/findStepUsages` directly over the owned `LspInterceptingPipe`. VS-validated end-to-end on the Experimental Instance (Surfaces 1 and 2, 2026-06-09).
 
 ---
 

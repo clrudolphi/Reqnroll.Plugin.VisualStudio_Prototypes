@@ -6,6 +6,9 @@ using Task = System.Threading.Tasks.Task;
 
 namespace Reqnroll.IdeSupport.VisualStudio.Extension;
 
+// The "Find Step Usages" command reaches the C# editor context menu by parenting to the
+// shell's built-in IDG_VS_CODEWIN_NAVIGATETOLOCATION group via CommandPlacement.VsctParent,
+// so this package no longer ships a compiled command table (no ProvideMenuResource needed).
 [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
 [Guid(PackageGuidString)]
 public sealed class ReqnrollPluginPackage : AsyncPackage

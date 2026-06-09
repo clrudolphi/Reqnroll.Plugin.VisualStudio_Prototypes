@@ -224,6 +224,10 @@ internal sealed class VsProjectEventMonitor : IDisposable
         try
         {
             var entries = new List<object>();
+            // DTE can surface the same file on more than one path (e.g. a generated .feature.cs is
+            // nested under its .feature via DependentUpon, causing the feature node to be walked
+            // twice).  Deduplicate by full path so the server receives each file once.
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in VsUtils.GetPhysicalFileProjectItems(project))
             {
                 var path = VsUtils.GetFilePath(item);
@@ -237,6 +241,9 @@ internal sealed class VsProjectEventMonitor : IDisposable
                 else if (ext.Equals(".cs", StringComparison.OrdinalIgnoreCase))
                     role = 1;   // ProjectFileRole.Binding = 1
                 else
+                    continue;
+
+                if (!seen.Add(path))
                     continue;
 
                 entries.Add(new { path, role, added = true });

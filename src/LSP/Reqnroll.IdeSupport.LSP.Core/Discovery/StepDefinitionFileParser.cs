@@ -266,20 +266,21 @@ public class StepDefinitionFileParser
 
     private static SourceLocation GetSourceLocation(string sourceFile, MethodDeclarationSyntax method)
     {
-        // Mirror the location reported by reflection-based discovery: the method body span.
-        // Expression-bodied and bodyless (abstract/partial/interface) methods have no block
-        // body, so fall back to the expression body or the method identifier.
+        // Begin: the first step-definition/hook attribute, so caret-on-attribute resolves.
+        // Falls back to the body/expression-body start (mirrors connector-path PDB convention)
+        // when no Reqnroll attribute is found. Expression-bodied and bodyless methods fall back
+        // to the method identifier when there is no block body either.
         SyntaxToken beginToken;
         SyntaxToken endToken;
         if (method.Body != null)
         {
-            beginToken = method.Body.GetFirstToken();
-            endToken = method.Body.GetLastToken();
+            beginToken = FindFirstReqnrollAttributeToken(method) ?? method.Body.GetFirstToken();
+            endToken   = method.Body.GetLastToken();
         }
         else if (method.ExpressionBody != null)
         {
-            beginToken = method.ExpressionBody.GetFirstToken();
-            endToken = method.ExpressionBody.GetLastToken();
+            beginToken = FindFirstReqnrollAttributeToken(method) ?? method.ExpressionBody.GetFirstToken();
+            endToken   = method.ExpressionBody.GetLastToken();
         }
         else
         {
@@ -287,10 +288,24 @@ public class StepDefinitionFileParser
         }
 
         var begin = beginToken.GetLocation().GetLineSpan().StartLinePosition;
-        var end = endToken.GetLocation().GetLineSpan().StartLinePosition;
+        var end   = endToken.GetLocation().GetLineSpan().StartLinePosition;
         return new SourceLocation(sourceFile,
             begin.Line + 1, begin.Character + 1,
             end.Line + 1, end.Character + 1);
+    }
+
+    private static SyntaxToken? FindFirstReqnrollAttributeToken(MethodDeclarationSyntax method)
+    {
+        foreach (var attrList in method.AttributeLists)
+        {
+            foreach (var attr in attrList.Attributes)
+            {
+                var name = GetAttributeName(attr);
+                if (StepDefinitionAttributes.ContainsKey(name) || HookAttributes.ContainsKey(name))
+                    return attrList.GetFirstToken();
+            }
+        }
+        return null;
     }
 
     private static RawScope ReadScopeAttributes(SyntaxList<AttributeListSyntax> attributeLists)

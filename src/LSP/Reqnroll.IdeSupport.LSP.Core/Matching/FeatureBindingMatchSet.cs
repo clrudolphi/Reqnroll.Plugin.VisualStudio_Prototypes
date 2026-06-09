@@ -1,5 +1,7 @@
 #nullable enable
 
+using System.IO;
+using Gherkin.Ast;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
@@ -75,6 +77,11 @@ public sealed class FeatureBindingMatchSet
     {
         var byStart = new Dictionary<int, StepBindingMatch>();
 
+        // Short project name for the Project column (e.g. "Minimal", "Minimalnet481").
+        var projectName = owner.IsKnown
+            ? Path.GetFileNameWithoutExtension(owner.ProjectFile)
+            : null;
+
         foreach (var tag in tags)
         {
             if (tag.Type is not (DeveroomTagTypes.DefinedStep or DeveroomTagTypes.UndefinedStep))
@@ -84,7 +91,20 @@ public sealed class FeatureBindingMatchSet
 
             // Collapse the DefinedStep/UndefinedStep pair a single step may emit: same span, same result.
             if (!byStart.ContainsKey(tag.Range.Start))
-                byStart[tag.Range.Start] = new StepBindingMatch(documentId, tag.Range, match);
+            {
+                // Walk up the tag hierarchy to extract keyword and scenario name at parse time
+                // so the handler does not have to re-derive them from snapshot text later.
+                //   DefinedStep.ParentTag  = StepBlock       (Data = Gherkin.Ast.Step)
+                //   StepBlock.ParentTag    = ScenarioDefinitionBlock (Data = IHasDescription)
+                var stepBlockTag      = tag.ParentTag;
+                var scenarioDefTag    = stepBlockTag?.ParentTag;
+                var keyword           = (stepBlockTag?.Data as Step)?.Keyword?.Trim();
+                var scenarioName      = (scenarioDefTag?.Data as IHasDescription)?.Name;
+                if (string.IsNullOrEmpty(scenarioName)) scenarioName = null;
+
+                byStart[tag.Range.Start] = new StepBindingMatch(
+                    documentId, tag.Range, match, keyword, scenarioName, projectName);
+            }
         }
 
         var steps = byStart.Values.OrderBy(s => s.Range.Start).ToArray();

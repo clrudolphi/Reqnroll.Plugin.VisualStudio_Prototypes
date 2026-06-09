@@ -1,6 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Specs.Support;
 
@@ -96,4 +97,19 @@ public static class LspClientExtensions
                     Context      = new ReferenceContext { IncludeDeclaration = false }
                 })
             .Returning<LocationOrLocationLinks?>(ct);
+
+    /// <summary>
+    /// Sends a <c>reqnroll/findStepUsages</c> request.
+    /// Returns <see langword="null"/> when the caret is not on a binding (three-state contract).
+    /// </summary>
+    public static Task<FindStepUsagesResponse?> RequestFindStepUsagesAsync(
+        this ILanguageClient client, DocumentUri uri, int line, int character, CancellationToken ct = default)
+        => client.SendRequest("reqnroll/findStepUsages",
+                new ReferenceParams
+                {
+                    TextDocument = new TextDocumentIdentifier { Uri = uri },
+                    Position     = new Position(line, character),
+                    Context      = new ReferenceContext { IncludeDeclaration = false }
+                })
+            .Returning<FindStepUsagesResponse?>(ct);
 }

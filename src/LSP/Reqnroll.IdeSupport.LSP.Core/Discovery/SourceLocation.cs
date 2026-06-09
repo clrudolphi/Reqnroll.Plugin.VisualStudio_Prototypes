@@ -21,5 +21,13 @@ public class SourceLocation
 
     public bool HasEndPosition => SourceFileEndLine != null && SourceFileEndColumn != null;
 
+    /// <summary>Returns <see langword="true"/> when <paramref name="line1Based"/> falls within
+    /// the span [<see cref="SourceFileLine"/>, <see cref="SourceFileEndLine"/>].</summary>
+    public bool ContainsLine(int line1Based)
+    {
+        var endLine = SourceFileEndLine ?? SourceFileLine;
+        return line1Based >= SourceFileLine && line1Based <= endLine;
+    }
+
     public override string ToString() => $"{SourceFile}({SourceFileLine},{SourceFileColumn})";
 }

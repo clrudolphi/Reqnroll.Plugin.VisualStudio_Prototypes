@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Specs.Support;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Specs.StepDefinitions;
@@ -46,4 +47,56 @@ public sealed class NavigationSteps
                        .EndsWith(fileName, StringComparison.OrdinalIgnoreCase),
             $"a reference to '{fileName}' should be present");
     }
+
+    // ── reqnroll/findStepUsages (three-state custom request) ──────────────────
+
+    [When(@"step usages are requested at line (\d+) column (\d+) in ""(.*)""")]
+    public async Task WhenStepUsagesAreRequestedAt(int line, int column, string fileName)
+    {
+        var uri = _ctx.UriFor(fileName);
+        _ctx.LastFindStepUsages = await _ctx.Harness.Client
+            .RequestFindStepUsagesAsync(uri, line, column)
+            .ConfigureAwait(false);
+    }
+
+    [Then(@"the step usages response has isBinding false")]
+    public void ThenStepUsagesResponseIsNotBinding()
+    {
+        _ctx.LastFindStepUsages.Should().NotBeNull();
+        _ctx.LastFindStepUsages!.IsBinding.Should().BeFalse(
+            "isBinding=false signals 'not a binding' — client should fall through to built-in C# FAR");
+    }
+
+    [Then(@"the step usages response has isBinding true")]
+    public void ThenStepUsagesResponseIsBinding()
+    {
+        _ctx.LastFindStepUsages.Should().NotBeNull("server should return a response for a binding position");
+        _ctx.LastFindStepUsages!.IsBinding.Should().BeTrue();
+    }
+
+    [Then(@"(\d+) step usage(?:s are|s is| is| are) returned")]
+    public void ThenNStepUsagesAreReturned(int expected)
+    {
+        _ctx.LastFindStepUsages.Should().NotBeNull();
+        _ctx.LastFindStepUsages!.Locations.Should().HaveCount(expected);
+    }
+
+    [Then(@"the step usages include a location in ""(.*)""")]
+    public void ThenStepUsagesIncludeALocationIn(string fileName)
+    {
+        _ctx.LastFindStepUsages.Should().NotBeNull();
+        _ctx.LastFindStepUsages!.Locations.Should().Contain(
+            loc => loc.Uri.EndsWith(fileName, StringComparison.OrdinalIgnoreCase),
+            $"a step usage in '{fileName}' should be present");
+    }
+
+    [Then(@"the step usages include a non-empty step text")]
+    public void ThenStepUsagesIncludeNonEmptyStepText()
+    {
+        _ctx.LastFindStepUsages.Should().NotBeNull();
+        _ctx.LastFindStepUsages!.Locations.Should().Contain(
+            loc => !string.IsNullOrWhiteSpace(loc.StepText),
+            "at least one location should carry step text extracted from the in-memory snapshot");
+    }
+
 }

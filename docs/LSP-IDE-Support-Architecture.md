@@ -280,7 +280,7 @@ The server accepts a `--client <ide>` command-line flag at startup (e.g., `--cli
 The server registers interest in both `*.feature` files and `*.cs` files. It does not act as a general-purpose C# language server; its interest in `*.cs` files is limited to:
 
 - Receiving `textDocument/didOpen` / `didChange` to trigger Roslyn-based binding re-discovery
-- Providing `textDocument/references` (step usages, from a C# binding method)
+- Providing `textDocument/references` and `reqnroll/findStepUsages` (step usages, from a C# binding method — see [F14](LSP-IDE-Support-Feature-Designs.md#f14--find-step-definition-usages))
 - Providing `textDocument/codeLens` (usage counts on binding attributes)
 
 > **As-built note**: `.cs` interest for binding re-discovery is implemented (see [F2 · Implementation status](LSP-IDE-Support-Feature-Designs.md#f2--binding-discovery)). A single OmniSharp text-document sync handler (`TextDocumentSyncHandler`) registers a document selector covering **both** `**/*.feature` and `**/*.cs` and routes by file extension, rather than a separate `CsSyncHandler` — this avoids OmniSharp's ambiguity when two `TextDocumentSyncHandlerBase` implementations claim overlapping documents. `.cs` files are deliberately **not** stored in the Gherkin document buffer.
@@ -391,7 +391,8 @@ This means the Protocol Handler is responsible for the initial synchronous state
 | `FeatureFoldingRangeHandler` | `textDocument/foldingRange` |
 | `GherkinFormattingHandler` | `textDocument/formatting`, `rangeFormatting`, `onTypeFormatting` |
 | `ReqnrollCommandHandler` | `workspace/executeCommand` |
-| `StepReferencesHandler` | `textDocument/references` (from `.cs` cursors) |
+| `StepReferencesHandler` | `textDocument/references` (from `.cs` cursors; two-state) |
+| `FindStepUsagesHandler` | `reqnroll/findStepUsages` (custom; three-state: isBinding false / 0 usages / locations) |
 | `StepRenameHandler` | `textDocument/prepareRename`, `textDocument/rename` |
 | `StepCodeLensHandler` | `textDocument/codeLens`, `codeLens/resolve` |
 

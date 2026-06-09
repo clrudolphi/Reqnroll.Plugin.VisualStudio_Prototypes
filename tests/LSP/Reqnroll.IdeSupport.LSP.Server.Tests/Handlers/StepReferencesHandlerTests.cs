@@ -4,6 +4,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Document;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
+using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
@@ -12,9 +13,10 @@ namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;
 
 public class StepReferencesHandlerTests
 {
-    private readonly IBindingMatchService      _matchService = Substitute.For<IBindingMatchService>();
-    private readonly ILspWorkspaceScopeManager _scopeManager = Substitute.For<ILspWorkspaceScopeManager>();
-    private readonly IDeveroomLogger            _logger       = Substitute.For<IDeveroomLogger>();
+    private readonly IBindingMatchService          _matchService    = Substitute.For<IBindingMatchService>();
+    private readonly ILspWorkspaceScopeManager     _scopeManager    = Substitute.For<ILspWorkspaceScopeManager>();
+    private readonly IProjectBindingRegistryLookup _registryLookup  = Substitute.For<IProjectBindingRegistryLookup>();
+    private readonly IDeveroomLogger               _logger          = Substitute.For<IDeveroomLogger>();
 
     private static readonly DocumentUri CsUri =
         DocumentUri.FromFileSystemPath("/workspace/Steps.cs");
@@ -29,7 +31,7 @@ public class StepReferencesHandlerTests
                      .Returns(Array.Empty<LspReqnrollProject>());
     }
 
-    private StepReferencesHandler CreateSut() => new(_matchService, _scopeManager, _logger);
+    private StepReferencesHandler CreateSut() => new(_matchService, _scopeManager, _registryLookup, _logger);
 
     private static ReferenceParams RequestAt(DocumentUri uri, int line, int character) =>
         new()

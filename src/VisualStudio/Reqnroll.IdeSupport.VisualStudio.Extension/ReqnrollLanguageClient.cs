@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.Shell;
 using Nerdbank.Streams;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.VisualStudio.Extension.Classification;
+using Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
 using Reqnroll.IdeSupport.VisualStudio.Extension.LspInterception;
 using Reqnroll.IdeSupport.VisualStudio.Extension.LspNotifications;
 #pragma warning disable VSEXTPREVIEW_LSP
@@ -21,6 +22,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
 {
     private readonly TraceSource _traceSource;
     private readonly IDeveroomLogger _fileLogger;
+    private readonly FindStepUsagesState _findStepUsagesState;
     private Process? _serverProcess;
     private LspInspectorLogger? _inspectorLogger;
     private LspInterceptingPipe? _interceptingPipe;
@@ -30,11 +32,13 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
     public ReqnrollLanguageClient(
         ExtensionCore container,
         VisualStudioExtensibility extensibilityObject,
-        TraceSource traceSource)
+        TraceSource traceSource,
+        FindStepUsagesState findStepUsagesState)
         : base(container, extensibilityObject)
     {
-        _traceSource = traceSource;
-        _fileLogger  = new SynchronousFileLogger();
+        _traceSource         = traceSource;
+        _findStepUsagesState = findStepUsagesState;
+        _fileLogger          = new SynchronousFileLogger();
         _traceSource.TraceInformation("ReqnrollLanguageClient: Instance created.");
         _fileLogger.LogInfo(
             $"ReqnrollLanguageClient: VS extension loaded. " +
@@ -174,6 +178,9 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         // Start monitoring VS project events and flush the current solution state.
         if (_interceptingPipe is not null)
         {
+            _findStepUsagesState.Service  = new FindStepUsagesService(_interceptingPipe, _traceSource);
+            _findStepUsagesState.Renderer = new FindStepUsagesRenderer(ServiceProvider.GlobalProvider, _traceSource);
+
             try
             {
                 var serviceProvider = ServiceProvider.GlobalProvider;
@@ -201,6 +208,9 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
 
             _projectMonitor?.Dispose();
             _projectMonitor = null;
+
+            _findStepUsagesState.Service  = null;
+            _findStepUsagesState.Renderer = null;
 
             _interceptingPipe?.Dispose();
             _interceptingPipe = null;

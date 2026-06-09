@@ -29,4 +29,13 @@ public interface IProjectBindingRegistryLookup
     /// associated project or the project has not yet completed a discovery run.
     /// </summary>
     ProjectBindingRegistry GetRegistryForUri(DocumentUri uri);
+
+    /// <summary>
+    /// Returns <see langword="true"/> when any registry owned by the projects that contain
+    /// <paramref name="csUri"/> has a step-definition binding whose source span covers
+    /// <paramref name="query"/>. Used by <see cref="Handlers.ProtocolHandlers.StepReferencesHandler"/>
+    /// to distinguish "no binding at this location" (return <see langword="null"/>) from
+    /// "binding with zero matching steps" (return empty).
+    /// </summary>
+    bool HasBindingAtLocation(DocumentUri csUri, SourceLocation query);
 }

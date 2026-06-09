@@ -84,6 +84,36 @@ public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLooku
             : ProjectBindingRegistry.Invalid;
     }
 
+    /// <inheritdoc/>
+    public bool HasBindingAtLocation(DocumentUri csUri, SourceLocation query)
+    {
+        // Check all owners (not just primary) so linked-file scenarios see every relevant registry.
+        var owners = _scopeManager.ResolveOwners(csUri);
+        foreach (var project in owners)
+        {
+            if (!_entries.TryGetValue(project, out var entry)) continue;
+            var registry = entry.Provider.Current;
+            if (registry == ProjectBindingRegistry.Invalid) continue;
+            foreach (var sd in registry.StepDefinitions)
+            {
+                var loc = sd.Implementation?.SourceLocation;
+                if (loc != null && CoversQuery(loc, query))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool CoversQuery(SourceLocation binding, SourceLocation query)
+    {
+        if (!string.Equals(binding.SourceFile, query.SourceFile, StringComparison.OrdinalIgnoreCase))
+            return false;
+        var endLine = binding.SourceFileEndLine ?? binding.SourceFileLine;
+        const int attributeLeeway = 2;
+        return query.SourceFileLine >= (binding.SourceFileLine - attributeLeeway)
+               && query.SourceFileLine <= endLine;
+    }
+
     // ── IDisposable ───────────────────────────────────────────────────────────
 
     public void Dispose()

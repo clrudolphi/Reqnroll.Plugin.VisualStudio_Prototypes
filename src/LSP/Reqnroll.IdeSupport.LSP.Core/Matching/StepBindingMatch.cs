@@ -20,11 +20,20 @@ namespace Reqnroll.IdeSupport.LSP.Core.Matching;
 /// </remarks>
 public sealed class StepBindingMatch
 {
-    public StepBindingMatch(string featureDocumentId, GherkinRange range, MatchResult result)
+    public StepBindingMatch(
+        string       featureDocumentId,
+        GherkinRange range,
+        MatchResult  result,
+        string?      keyword      = null,
+        string?      scenarioName = null,
+        string?      projectName  = null)
     {
         FeatureDocumentId = featureDocumentId ?? throw new ArgumentNullException(nameof(featureDocumentId));
-        Range = range ?? throw new ArgumentNullException(nameof(range));
-        Result = result ?? throw new ArgumentNullException(nameof(result));
+        Range      = range  ?? throw new ArgumentNullException(nameof(range));
+        Result     = result ?? throw new ArgumentNullException(nameof(result));
+        Keyword      = keyword;
+        ScenarioName = scenarioName;
+        ProjectName  = projectName;
     }
 
     /// <summary>
@@ -46,6 +55,27 @@ public sealed class StepBindingMatch
 
     /// <summary>True when <paramref name="offset"/> (absolute char offset) falls within the step text span.</summary>
     public bool Contains(int offset) => offset >= Range.Start && offset < Range.End;
+
+    /// <summary>
+    /// The Gherkin step keyword as it appears in the feature file, trimmed
+    /// (e.g. <c>"Given"</c>, <c>"When"</c>, <c>"Then"</c>, <c>"And"</c>).
+    /// <see langword="null"/> when the match was built without AST context.
+    /// </summary>
+    public string? Keyword { get; }
+
+    /// <summary>
+    /// The name of the scenario or scenario outline that contains this step
+    /// (e.g. <c>"Add two numbers"</c>).
+    /// <see langword="null"/> for Background steps or when AST context was unavailable.
+    /// </summary>
+    public string? ScenarioName { get; }
+
+    /// <summary>
+    /// The short project name derived from <c>ProjectOwner.ProjectFile</c> at cache-build time
+    /// (e.g. <c>"Minimal"</c>, <c>"Minimalnet481"</c>).
+    /// <see langword="null"/> when the owner was unknown at cache-build time.
+    /// </summary>
+    public string? ProjectName { get; }
 
     /// <summary>
     /// The source locations of every binding this step resolves to — one for a unique match,

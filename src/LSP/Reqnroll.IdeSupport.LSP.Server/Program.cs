@@ -141,7 +141,8 @@ public class Program
                .AddSingleton<WorkspaceFoldersHandler>()
                .AddSingleton<WatchedFilesHandler>()
                .AddSingleton<SemanticTokensHandler>()
-               .AddSingleton<StepReferencesHandler>();
+               .AddSingleton<StepReferencesHandler>()
+               .AddSingleton<FindStepUsagesHandler>();
 
         options.AddHandler<TextDocumentSyncHandler>()
                .AddHandler<WorkspaceFoldersHandler>()
@@ -217,6 +218,15 @@ public class Program
         options.OnRequest<ReferenceParams, LocationOrLocationLinks?>(
             "textDocument/references",
             (request, ct) => serverServices!.GetRequiredService<StepReferencesHandler>().Handle(request, ct));
+
+        // F14 P2b — Custom reqnroll/findStepUsages request.
+        // Delivers the full three-state contract (null / empty / locations) and per-location stepText
+        // that textDocument/references cannot carry (OmniSharp LocationOrLocationLinks cannot serialize null).
+        // The VS client uses this request exclusively; textDocument/references is retained for
+        // spec-test compatibility and any future non-VS clients.
+        options.OnRequest<ReferenceParams, FindStepUsagesResponse?>(
+            "reqnroll/findStepUsages",
+            (request, ct) => serverServices!.GetRequiredService<FindStepUsagesHandler>().Handle(request, ct));
 
     }
 }
