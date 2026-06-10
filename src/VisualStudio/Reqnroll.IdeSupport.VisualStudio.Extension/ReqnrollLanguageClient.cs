@@ -178,23 +178,37 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         // Start monitoring VS project events and flush the current solution state.
         if (_interceptingPipe is not null)
         {
-            _findStepUsagesState.Service  = new FindStepUsagesService(_interceptingPipe, _traceSource);
-            _findStepUsagesState.Renderer = new FindStepUsagesRenderer(ServiceProvider.GlobalProvider, _traceSource);
+            // FindStepUsagesService uses only LspInterceptingPipe + TraceSource — no COM, safe here.
+            _findStepUsagesState.Service = new FindStepUsagesService(_interceptingPipe, _traceSource);
 
             try
             {
+                // VsProjectEventMonitor and FindStepUsagesRenderer both access VS COM services
+                // (DTE, SVsFindAllReferences).  VS.Extensibility may call this method on a
+                // background thread (e.g. the JSON-RPC receive thread), so we marshal explicitly.
+                await ThreadHelper.JoinableTaskFactory
+                    .SwitchToMainThreadAsync(cancellationToken);
+
                 var serviceProvider = ServiceProvider.GlobalProvider;
+                _findStepUsagesState.Renderer = new FindStepUsagesRenderer(serviceProvider, _traceSource);
+
+                _fileLogger.LogInfo("ReqnrollLanguageClient: Creating VsProjectEventMonitor.");
                 _projectMonitor = new VsProjectEventMonitor(
                     _interceptingPipe, _traceSource, serviceProvider);
 
+                _fileLogger.LogInfo("ReqnrollLanguageClient: Sending initial projects.");
                 await _projectMonitor
                     .SendInitialProjectsAsync(cancellationToken)
                     .ConfigureAwait(false);
+
+                _fileLogger.LogInfo("ReqnrollLanguageClient: Initial project flush complete.");
             }
             catch (Exception ex)
             {
                 _traceSource.TraceEvent(TraceEventType.Warning, 0,
                     "ReqnrollLanguageClient: Could not start project monitor: {0}", ex.Message);
+                _fileLogger.LogWarning(
+                    $"ReqnrollLanguageClient: Could not start project monitor: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }
