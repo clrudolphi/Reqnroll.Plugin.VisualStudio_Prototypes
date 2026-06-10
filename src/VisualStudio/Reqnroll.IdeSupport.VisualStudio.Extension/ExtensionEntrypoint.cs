@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.Extensibility;
 using Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
+using Reqnroll.IdeSupport.VisualStudio.Extension.GoToHooks;
 
 namespace Reqnroll.IdeSupport.VisualStudio.Extension
 {
@@ -27,6 +28,7 @@ namespace Reqnroll.IdeSupport.VisualStudio.Extension
             // rather than relying on the undocumented ability to inject one contribution class into
             // another.
             serviceCollection.AddSingleton<FindStepUsagesState>();
+            serviceCollection.AddSingleton<GoToHooksState>();
         }
     }
 }

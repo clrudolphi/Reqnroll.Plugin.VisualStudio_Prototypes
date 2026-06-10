@@ -11,6 +11,7 @@ using Nerdbank.Streams;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.VisualStudio.Extension.Classification;
 using Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
+using Reqnroll.IdeSupport.VisualStudio.Extension.GoToHooks;
 using Reqnroll.IdeSupport.VisualStudio.Extension.LspInterception;
 using Reqnroll.IdeSupport.VisualStudio.Extension.LspNotifications;
 #pragma warning disable VSEXTPREVIEW_LSP
@@ -23,6 +24,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
     private readonly TraceSource _traceSource;
     private readonly IDeveroomLogger _fileLogger;
     private readonly FindStepUsagesState _findStepUsagesState;
+    private readonly GoToHooksState _goToHooksState;
     private Process? _serverProcess;
     private LspInspectorLogger? _inspectorLogger;
     private LspInterceptingPipe? _interceptingPipe;
@@ -33,11 +35,13 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         ExtensionCore container,
         VisualStudioExtensibility extensibilityObject,
         TraceSource traceSource,
-        FindStepUsagesState findStepUsagesState)
+        FindStepUsagesState findStepUsagesState,
+        GoToHooksState goToHooksState)
         : base(container, extensibilityObject)
     {
         _traceSource         = traceSource;
         _findStepUsagesState = findStepUsagesState;
+        _goToHooksState      = goToHooksState;
         _fileLogger          = new SynchronousFileLogger();
         _traceSource.TraceInformation("ReqnrollLanguageClient: Instance created.");
         _fileLogger.LogInfo(
@@ -178,8 +182,9 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         // Start monitoring VS project events and flush the current solution state.
         if (_interceptingPipe is not null)
         {
-            // FindStepUsagesService uses only LspInterceptingPipe + TraceSource — no COM, safe here.
+            // GoToHooksService and FindStepUsagesService use only LspInterceptingPipe + TraceSource — no COM, safe here.
             _findStepUsagesState.Service = new FindStepUsagesService(_interceptingPipe, _traceSource);
+            _goToHooksState.Service      = new GoToHooksService(_interceptingPipe, _traceSource);
 
             try
             {
@@ -226,6 +231,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
 
             _findStepUsagesState.Service  = null;
             _findStepUsagesState.Renderer = null;
+            _goToHooksState.Service       = null;
 
             _interceptingPipe?.Dispose();
             _interceptingPipe = null;

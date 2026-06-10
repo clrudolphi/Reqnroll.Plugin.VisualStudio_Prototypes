@@ -112,4 +112,15 @@ public static class LspClientExtensions
                     Context      = new ReferenceContext { IncludeDeclaration = false }
                 })
             .Returning<FindStepUsagesResponse?>(ct);
+
+    /// <summary>Sends a <c>reqnroll/goToHooks</c> request (F17 — Hook Navigation).</summary>
+    public static Task<GoToHooksResponse?> RequestGoToHooksAsync(
+        this ILanguageClient client, DocumentUri uri, int line, int character, CancellationToken ct = default)
+        => client.SendRequest("reqnroll/goToHooks",
+                new TextDocumentPositionParams
+                {
+                    TextDocument = new TextDocumentIdentifier { Uri = uri },
+                    Position     = new Position(line, character),
+                })
+            .Returning<GoToHooksResponse?>(ct);
 }

@@ -1092,16 +1092,28 @@ All results are filtered by the tags in scope at the cursor position matched aga
 |---------|---------------|-------|
 | 🔧 Plugin | 🔧 Plugin | 🔧 Plugin |
 
-"Go to Hooks" does not map onto any standard IDE command (unlike Go to Definition, which has a universal F12 keybinding). Each IDE client requires custom plugin code to expose the feature — as a context menu item, command palette entry, or CodeAction. The IDE plugin code invokes `textDocument/definition` at the relevant position; the server-side logic (resolving hooks by context and tag scope) is standard.
+"Go to Hooks" does not map onto any standard IDE command (unlike Go to Definition, which has a universal F12 keybinding). Each IDE client requires custom plugin code to expose the feature.
 
-**Rider note**: Same PSI bridge requirement as F5 — `ReqnrollFeatureDefinitionReferenceProvider` handles hook navigation responses as well as step definition responses. See [Architecture §6.3](LSP-IDE-Support-Architecture.md#63-rider).
+Using `textDocument/definition` for this feature is not viable: F5 already uses that message to navigate to the step binding on step lines, so the server would have no way to distinguish "find step definition" from "find hooks" when the cursor is on a step line. Step-level hooks (`[BeforeStep]`/`[AfterStep]`) would be unreachable. Instead, the plugin sends a dedicated custom request `reqnroll/goToHooks`, which the server handles independently of the standard definition pipeline.
+
+**Rider note**: Unlike F5 (which routes through `ReqnrollFeatureDefinitionReferenceProvider`), hook navigation uses the separate `reqnroll/goToHooks` message and requires its own PSI bridge handler. See [Architecture §6.3](LSP-IDE-Support-Architecture.md#63-rider).
+
+#### Visual Studio — surface and UX details
+
+The command is placed in the built-in `IDG_VS_CODEWIN_NAVIGATETOLOCATION` group of the code-editor context menu (the same group that hosts "Go To Definition" and "Find All References"). A `VisibleWhen` constraint restricts visibility to editors with the `reqnroll-gherkin` content type, so the item does not appear in C# or other file editors.
+
+**Single result** — navigates directly to the hook method (no dialog).
+
+**Multiple results** — shows a VS-themed modal dialog (`NavigationPickerDialog`, a `DialogWindow` subclass) with a vertical `ListBox` listing all candidates. Each entry is formatted as `[HookType] MethodName (filename:line)`. Selecting an entry and clicking **Go** (or double-clicking) navigates to that hook; closing or pressing Escape cancels.
+
+The picker logic is encapsulated in a shared `NavigationPickerHelper` (static helper in the VS extension). The same helper is designed for reuse when F5 "Go to Step Definition" encounters multiple ambiguous bindings and needs to present a choice.
 
 #### LSP messages
 
 | Direction | Method | Purpose |
 |-----------|--------|---------|
-| Client → Server | `textDocument/definition` (at keyword/tag position) | Request hook locations for context |
-| Server → Client | `Location[]` response | C# hook method locations |
+| Client → Server | `reqnroll/goToHooks` (uri, position) | Request hook locations for context |
+| Server → Client | `GoToHooksResponse` (`hooks[]`) | C# hook method locations + metadata |
 
 #### Sequence diagram
 
@@ -1111,21 +1123,26 @@ sequenceDiagram
     participant IDE
 
     box LightBlue LSP Server
-        participant FDH as FeatureDefinitionHandler
+        participant HH as GoToHooksHandler
         participant DB as Document Buffer
         participant BR as Binding Registry
     end
 
-    User->>IDE: Invoke "Go to Hooks" (custom command / context menu)
-    IDE->>IDE: [Plugin] Map command to textDocument/definition at cursor
-    IDE->>FDH: textDocument/definition (uri, position)
-    FDH->>DB: Retrieve AST by URI
-    DB-->>FDH: Gherkin AST
-    FDH->>FDH: Determine position context (Feature/Scenario/Step level)\nand collect tags in scope
-    FDH->>BR: Find hooks matching context level + tags in scope
-    BR-->>FDH: Location[] (C# hook methods)
-    FDH-->>IDE: Location[] response
-    IDE-->>User: Picker (if multiple) or direct navigate to C# hook method
+    User->>IDE: Right-click → "Go to Hooks" in .feature editor
+    IDE->>HH: reqnroll/goToHooks (uri, position)
+    HH->>DB: Retrieve AST + tags by URI
+    DB-->>HH: Gherkin AST + DeveroomTags
+    HH->>HH: Determine position context (Feature/Scenario/Step level)\nand collect tags in scope
+    HH->>BR: Filter Hooks by context level + scope expressions
+    BR-->>HH: GoToHooksResponse { hooks[] }
+    HH-->>IDE: GoToHooksResponse
+    alt single result
+        IDE-->>User: Navigate directly to hook method
+    else multiple results
+        IDE->>User: NavigationPickerDialog (vertical ListBox)
+        User->>IDE: Select hook
+        IDE-->>User: Navigate to selected hook method
+    end
 ```
 
 ---

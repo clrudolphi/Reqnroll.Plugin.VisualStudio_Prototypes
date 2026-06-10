@@ -143,7 +143,8 @@ public class Program
                .AddSingleton<SemanticTokensHandler>()
                .AddSingleton<StepReferencesHandler>()
                .AddSingleton<FindStepUsagesHandler>()
-               .AddSingleton<FeatureDefinitionHandler>();
+               .AddSingleton<FeatureDefinitionHandler>()
+               .AddSingleton<GoToHooksHandler>();
 
         options.AddHandler<TextDocumentSyncHandler>()
                .AddHandler<WorkspaceFoldersHandler>()
@@ -229,6 +230,13 @@ public class Program
         options.OnRequest<ReferenceParams, FindStepUsagesResponse?>(
             "reqnroll/findStepUsages",
             (request, ct) => serverServices!.GetRequiredService<FindStepUsagesHandler>().HandleAsync(request, ct));
+
+        // F17 — Go to Hooks.
+        // Custom message so the server can distinguish "find hooks" from F5 "find step definition"
+        // on step lines, where both would fire at the same position if textDocument/definition were reused.
+        options.OnRequest<TextDocumentPositionParams, GoToHooksResponse>(
+            "reqnroll/goToHooks",
+            (request, ct) => serverServices!.GetRequiredService<GoToHooksHandler>().HandleAsync(request, ct));
 
     }
 }

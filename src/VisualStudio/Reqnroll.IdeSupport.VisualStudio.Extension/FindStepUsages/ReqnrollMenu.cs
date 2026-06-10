@@ -15,6 +15,9 @@ internal static class ReqnrollMenu
     public static MenuConfiguration ReqnrollExtensionsMenu => new("Reqnroll")
     {
         Placements = [CommandPlacement.KnownPlacements.ExtensionsMenu],
-        Children = [MenuChild.Command<FindStepUsagesCommand>()],
+        Children =
+        [
+            MenuChild.Command<FindStepUsagesCommand>(),
+        ],
     };
 }
