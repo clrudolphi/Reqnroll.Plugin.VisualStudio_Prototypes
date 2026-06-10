@@ -65,8 +65,8 @@ internal sealed class LspInspectorLogger : ILspMessageInterceptor, IDisposable
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
-            _writer.Write(FormatEntry(message));
-            _writer.Flush();
+            await _writer.WriteAsync(FormatEntry(message)).ConfigureAwait(false);
+            await _writer.FlushAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

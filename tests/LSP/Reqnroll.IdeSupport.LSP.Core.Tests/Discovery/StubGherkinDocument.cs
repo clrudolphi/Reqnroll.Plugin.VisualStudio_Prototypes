@@ -17,7 +17,7 @@ public record StubGherkinDocumentWithScope : IGherkinDocumentContext
 {
     public static StubGherkinDocumentWithScope Instance { get; } = new();
 
-    public IGherkinDocumentContext Parent => null;
+    public IGherkinDocumentContext Parent => null!;
 
     public object Node => new Scenario(
         new[]

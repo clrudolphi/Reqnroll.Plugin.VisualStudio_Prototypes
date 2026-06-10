@@ -34,7 +34,7 @@ internal static class VsThemeResourceProvider
         return dict;
     }
 
-    private static void AddThemedBrush(Dictionary<string, object> dict, ThemeResourceKey themedResourceKey, string key = null)
+    private static void AddThemedBrush(Dictionary<string, object> dict, ThemeResourceKey themedResourceKey, string? key = null)
     {
         key ??= "Themed" + themedResourceKey;
         var brush = Application.Current.TryFindResource(themedResourceKey);
@@ -49,14 +49,14 @@ internal static class VsThemeResourceProvider
             dict[key] = brush;
     }
 
-    private static void AddThemedStyle(Dictionary<string, object> dict, object styleKey, string key = null)
+    private static void AddThemedStyle(Dictionary<string, object> dict, object styleKey, string? key = null)
     {
         key ??= styleKey.ToString().Replace("StyleKey", "");
         if (Application.Current.FindResource(styleKey) is Style style)
             dict[key] = style;
     }
 
-    private static Brush ToBrushFromColorKey(ThemeResourceKey key)
+    private static Brush? ToBrushFromColorKey(ThemeResourceKey key)
     {
         try
         {

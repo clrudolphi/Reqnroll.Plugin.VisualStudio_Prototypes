@@ -60,7 +60,7 @@ public sealed class FindStepUsagesHandler
     /// Handles a <c>reqnroll/findStepUsages</c> request.
     /// Request params are identical to <c>textDocument/references</c> (<see cref="ReferenceParams"/>).
     /// </summary>
-    public Task<FindStepUsagesResponse?> Handle(
+    public Task<FindStepUsagesResponse?> HandleAsync(
         ReferenceParams   request,
         CancellationToken cancellationToken)
     {

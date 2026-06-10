@@ -7,6 +7,10 @@
     <IsPackable>false</IsPackable>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>../../../reqnroll.snk</AssemblyOriginatorKeyFile>
+    <NoWarn>NU1701;NU1702;VSTHRD200</NoWarn>
+    <!-- NU1701: .NET Framework packages (e.g., VS editor) with no net10.0 variant are safe to use here -->
+    <!-- NU1702: ProjectRef to net481 projects (VsxStubs, VSSDKIntegration) in net10.0 tests is safe -->
+    <!-- VSTHRD200: Test methods don't require "Async" suffix convention -->
   </PropertyGroup>
 
   <ItemGroup Label="Deferred - depends on VS connector not yet ported">

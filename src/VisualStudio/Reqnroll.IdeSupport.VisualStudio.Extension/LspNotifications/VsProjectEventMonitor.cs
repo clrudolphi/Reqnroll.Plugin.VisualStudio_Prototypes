@@ -43,6 +43,7 @@ internal sealed class VsProjectEventMonitor : IDisposable
         TraceSource trace,
         IServiceProvider serviceProvider)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         _pipe            = pipe            ?? throw new ArgumentNullException(nameof(pipe));
         _trace           = trace           ?? throw new ArgumentNullException(nameof(trace));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -319,6 +320,7 @@ internal sealed class VsProjectEventMonitor : IDisposable
 
     public void Dispose()
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         if (_disposed) return;
         _disposed = true;
 

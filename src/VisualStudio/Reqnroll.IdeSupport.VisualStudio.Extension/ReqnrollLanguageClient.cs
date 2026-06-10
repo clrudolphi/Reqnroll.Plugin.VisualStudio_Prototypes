@@ -202,6 +202,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
     /// <inheritdoc />
     protected override void Dispose(bool isDisposing)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         if (isDisposing)
         {
             _fileLogger.LogInfo("ReqnrollLanguageClient: Disposing — shutting down server connection.");

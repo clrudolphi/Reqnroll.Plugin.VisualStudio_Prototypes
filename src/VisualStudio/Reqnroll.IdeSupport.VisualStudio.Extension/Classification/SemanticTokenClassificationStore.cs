@@ -89,7 +89,7 @@ internal sealed class SemanticTokenClassificationStore
         if (string.IsNullOrEmpty(pathOrUri)) return null;
         try
         {
-            string path = Uri.TryCreate(pathOrUri, UriKind.Absolute, out var uri) && uri.IsFile
+            string? path = Uri.TryCreate(pathOrUri, UriKind.Absolute, out var uri) && uri.IsFile
                 ? uri.LocalPath
                 : pathOrUri;
             return Path.GetFullPath(path).ToLowerInvariant();

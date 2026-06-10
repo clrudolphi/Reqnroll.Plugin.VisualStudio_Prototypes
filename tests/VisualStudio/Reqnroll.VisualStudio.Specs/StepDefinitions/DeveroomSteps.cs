@@ -21,7 +21,9 @@ public class DeveroomSteps : Steps
         _stubIdeScope = stubIdeScope;
         _stubIdeScope.SetupFireAndForgetOnBackgroundThread(FireAndForgetCallBack);
         
+#pragma warning disable VSTHRD100 // async void is required by the callback delegate contract
         async void FireAndForgetCallBack(Func<CancellationToken, Task> action, string _)
+#pragma warning restore VSTHRD100
         {
             try
             {

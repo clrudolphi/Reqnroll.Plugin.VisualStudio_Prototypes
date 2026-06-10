@@ -124,6 +124,7 @@ public static class VsUtils
 
     public static bool IsSolutionProject(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return !string.IsNullOrWhiteSpace(project.FullName) &&
@@ -138,6 +139,7 @@ public static class VsUtils
 
     public static string GetProjectFolder(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return project.Properties.Item("FullPath").Value.ToString();
@@ -151,6 +153,7 @@ public static class VsUtils
 
     public static string GetPlatformName(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return project.ConfigurationManager.ActiveConfiguration.PlatformName;
@@ -164,6 +167,7 @@ public static class VsUtils
 
     public static string GetPlatformTargetName(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             if (project.ConfigurationManager.ActiveConfiguration.Properties == null)
@@ -182,6 +186,7 @@ public static class VsUtils
 
     public static string GetOutputFileName(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             var result = project.Properties.Item("OutputFileName").Value.ToString();
@@ -197,6 +202,7 @@ public static class VsUtils
 
     public static string GetOutputPath(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             if (project.ConfigurationManager.ActiveConfiguration.Properties == null)
@@ -212,6 +218,7 @@ public static class VsUtils
 
     public static string GetOutputAssemblyPath(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             //DumpProperties(project.Properties, "project");
@@ -242,6 +249,7 @@ public static class VsUtils
 
     private static string GetOutputAssemblyPathFromOutputGroups(Project project, string outputFileName, string projectFolder)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             DumpOutputGroups(project.ConfigurationManager.ActiveConfiguration.OutputGroups);
@@ -281,6 +289,7 @@ public static class VsUtils
 
     public static string GetTargetFrameworkMoniker(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return project.Properties.Item("TargetFrameworkMoniker").Value.ToString();
@@ -294,6 +303,7 @@ public static class VsUtils
 
     public static string GetTargetFrameworkMonikers(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return project.Properties.Item("TargetFrameworkMonikers").Value.ToString();
@@ -332,6 +342,7 @@ public static class VsUtils
 
     private static void DumpOutputGroups(OutputGroups outputGroups)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         void DumpOutputGroup(OutputGroup outputGroup)
         {
             var canonicalName = outputGroup.CanonicalName;
@@ -357,6 +368,7 @@ public static class VsUtils
 
     public static T SafeResolveMefDependency<T>(DTE dte) where T : class
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             var oleServiceProvider = dte as IOleServiceProvider;
@@ -379,12 +391,14 @@ public static class VsUtils
 
     public static T ResolveMefDependency<T>(IServiceProvider serviceProvider) where T : class
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         var componentModel = (IComponentModel) serviceProvider.GetService(typeof(SComponentModel));
         return componentModel?.GetService<T>();
     }
 
     public static string GetMefCatalogCacheFolder(IServiceProvider serviceProvider)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         var componentModelHost = serviceProvider.GetService(typeof(SVsComponentModelHost)) as IVsComponentModelHost;
         if (componentModelHost == null)
             return null;
@@ -444,6 +458,7 @@ public static class VsUtils
 
     public static IVsHierarchy GetHierarchyFromProject(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             var serviceProvider = new ServiceProvider(project.DTE as IOleServiceProvider);
@@ -487,6 +502,7 @@ public static class VsUtils
 
     public static string GetMsBuildPropertyValue(Project project, string propertyName)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             var hierarchy = GetHierarchyFromProject(project);
@@ -508,10 +524,15 @@ public static class VsUtils
         }
     }
 
-    public static IEnumerable<ProjectItem> GetProjectItems(Project project) => GetProjectItems(project.ProjectItems);
+    public static IEnumerable<ProjectItem> GetProjectItems(Project project)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return GetProjectItems(project.ProjectItems);
+    }
 
     private static IEnumerable<ProjectItem> GetProjectItems(ProjectItems projectItems)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         foreach (ProjectItem projectItem in projectItems)
         {
             yield return projectItem;
@@ -521,20 +542,29 @@ public static class VsUtils
         }
     }
 
-    public static IEnumerable<ProjectItem> GetPhysicalFileProjectItems(Project project) =>
-        GetProjectItems(project).Where(IsPhysicalFile);
+    public static IEnumerable<ProjectItem> GetPhysicalFileProjectItems(Project project)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return GetProjectItems(project).Where(IsPhysicalFile);
+    }
 
     public static ProjectItem FindProjectItemByFilePath(Project project, string filePath)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         return GetPhysicalFileProjectItems(project)
             .FirstOrDefault(pi => string.Equals(filePath, GetFilePath(pi), StringComparison.OrdinalIgnoreCase));
     }
 
-    public static bool IsPhysicalFile(ProjectItem projectItem) => string.Equals(projectItem.Kind,
-        VSConstants.GUID_ItemType_PhysicalFile.ToString("B"), StringComparison.InvariantCultureIgnoreCase);
+    public static bool IsPhysicalFile(ProjectItem projectItem)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return string.Equals(projectItem.Kind,
+            VSConstants.GUID_ItemType_PhysicalFile.ToString("B"), StringComparison.InvariantCultureIgnoreCase);
+    }
 
     public static string GetFilePath(ProjectItem projectItem)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         if (!IsPhysicalFile(projectItem))
             return null;
 
@@ -560,6 +590,7 @@ public static class VsUtils
 
     public static string GetVsMainVersion(IServiceProvider serviceProvider)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         const string defaultMainVersion = "17.0";
         try
         {
@@ -576,6 +607,7 @@ public static class VsUtils
     // https://stackoverflow.com/a/55039958
     public static string GetVsProductDisplayVersionSafe(IServiceProvider serviceProvider)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             var vsAppId = serviceProvider.GetService<IVsAppId>(typeof(SVsAppId));
@@ -596,6 +628,7 @@ public static class VsUtils
     {
         return ThreadHelper.JoinableTaskFactory.Run(async () =>
         {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var solution = serviceProvider.GetService<SVsSolution, IVsSolution>();
             int result = solution.GetProjectOfUniqueName(projectFullName, out IVsHierarchy project);
             if (result != VSConstants.S_OK)

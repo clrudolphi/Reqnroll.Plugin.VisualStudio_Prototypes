@@ -9,7 +9,7 @@
     <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
     <VssdkCompatibleExtension>true</VssdkCompatibleExtension>
     <!-- Suppress preview LSP API diagnostics -->
-    <NoWarn>$(NoWarn);VSEXTPREVIEW_LSP</NoWarn>
+    <NoWarn>$(NoWarn);VSEXTPREVIEW_LSP;CEE0027;VSSDK007</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

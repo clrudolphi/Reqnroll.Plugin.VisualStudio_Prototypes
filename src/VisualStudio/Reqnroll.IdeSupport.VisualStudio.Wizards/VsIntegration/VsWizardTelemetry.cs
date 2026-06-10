@@ -53,7 +53,7 @@ public class VsWizardTelemetry : IWizardTelemetry, IWizardTelemetryLogger
         }
         return new OriginalProjectSettings(
                 kind,
-                default, default, default, default, default, reqnrollVersion, default, default, traits, default);
+                null!, null!, default, null!, null!, reqnrollVersion, null!, null!, traits, default);
    
     }
 

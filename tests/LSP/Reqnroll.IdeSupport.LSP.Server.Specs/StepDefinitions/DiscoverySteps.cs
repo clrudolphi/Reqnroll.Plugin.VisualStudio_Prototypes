@@ -130,7 +130,7 @@ public sealed class DiscoverySteps
         withSource.Should().NotBeEmpty("the connector should emit source locations for a Debug build");
         foreach (var sd in withSource)
         {
-            var loc = sd.Implementation.SourceLocation;
+            var loc = sd.Implementation.SourceLocation!;
             loc.SourceFile.Should().NotBeNullOrEmpty();
             File.Exists(loc.SourceFile).Should().BeTrue($"source file '{loc.SourceFile}' should exist");
             loc.SourceFileLine.Should().BeGreaterThan(1);

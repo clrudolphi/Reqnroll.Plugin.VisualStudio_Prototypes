@@ -39,7 +39,7 @@ public class SemanticTokensHandlerTests
         {
             TextDocument = new TextDocumentIdentifier { Uri = NonFeatureUri }
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().BeNull();
     }
 
@@ -56,7 +56,7 @@ public class SemanticTokensHandlerTests
         {
             TextDocument = new TextDocumentIdentifier { Uri = FeatureUri }
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().BeSameAs(expected);
     }
 
@@ -72,7 +72,7 @@ public class SemanticTokensHandlerTests
         {
             TextDocument = new TextDocumentIdentifier { Uri = FeatureUri }
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().BeNull();
     }
 
@@ -87,7 +87,7 @@ public class SemanticTokensHandlerTests
             TextDocument = new TextDocumentIdentifier { Uri = NonFeatureUri },
             Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(0, 0, 1, 0)
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().BeNull();
     }
 
@@ -105,7 +105,7 @@ public class SemanticTokensHandlerTests
             TextDocument = new TextDocumentIdentifier { Uri = FeatureUri },
             Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(0, 0, 1, 0)
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().BeSameAs(expected);
     }
 
@@ -120,7 +120,7 @@ public class SemanticTokensHandlerTests
             TextDocument = new TextDocumentIdentifier { Uri = NonFeatureUri },
             PreviousResultId = "prev"
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().BeNull();
     }
 
@@ -138,7 +138,7 @@ public class SemanticTokensHandlerTests
             TextDocument = new TextDocumentIdentifier { Uri = FeatureUri },
             PreviousResultId = "prev"
         };
-        var result = await sut.Handle(request, CancellationToken.None);
+        var result = await sut.HandleAsync(request, CancellationToken.None);
         result.Should().NotBeNull();
         result!.IsFull.Should().BeTrue();
         result.Full.Should().BeSameAs(tokens);

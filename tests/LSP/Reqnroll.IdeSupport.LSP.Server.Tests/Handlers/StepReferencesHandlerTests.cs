@@ -54,7 +54,7 @@ public class StepReferencesHandlerTests
     [Fact]
     public async Task Handle_non_cs_uri_returns_null_without_querying_match_service()
     {
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(FeatureUri, 2, 0), CancellationToken.None);
 
         result.Should().BeNull();
@@ -69,7 +69,7 @@ public class StepReferencesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(Array.Empty<StepBindingMatch>());
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result.Should().NotBeNull();
@@ -84,7 +84,7 @@ public class StepReferencesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result!.Should().ContainSingle();
@@ -96,7 +96,7 @@ public class StepReferencesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result!.Single().Location!.Uri.Should().Be(FeatureUri);
@@ -115,7 +115,7 @@ public class StepReferencesHandlerTests
                          MakeMatch(secondUri,  33, 6)
                      });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result!.Should().HaveCount(2);
@@ -131,7 +131,7 @@ public class StepReferencesHandlerTests
                                  Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(Array.Empty<StepBindingMatch>());
 
-        await CreateSut().Handle(RequestAt(CsUri, 9, 4), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 9, 4), CancellationToken.None);
 
         captured!.SourceFileLine.Should().Be(10);
     }
@@ -144,7 +144,7 @@ public class StepReferencesHandlerTests
                                  Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(Array.Empty<StepBindingMatch>());
 
-        await CreateSut().Handle(RequestAt(CsUri, 9, 4), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 9, 4), CancellationToken.None);
 
         captured!.SourceFileColumn.Should().Be(5);
     }
@@ -157,7 +157,7 @@ public class StepReferencesHandlerTests
                                  Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(Array.Empty<StepBindingMatch>());
 
-        await CreateSut().Handle(RequestAt(CsUri, 0, 0), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 0, 0), CancellationToken.None);
 
         captured!.SourceFile.Should().Be(CsUri.GetFileSystemPath());
     }
@@ -170,7 +170,7 @@ public class StepReferencesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         var range = result!.Single().Location!.Range;
@@ -201,7 +201,7 @@ public class StepReferencesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(Array.Empty<StepBindingMatch>());
 
-        await CreateSut().Handle(RequestAt(CsUri, 0, 0), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 0, 0), CancellationToken.None);
 
         _matchService.Received(1).FindUsages(
             Arg.Any<SourceLocation>(),
@@ -218,7 +218,7 @@ public class StepReferencesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(Array.Empty<StepBindingMatch>());
 
-        await CreateSut().Handle(RequestAt(CsUri, 0, 0), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 0, 0), CancellationToken.None);
 
         _matchService.Received(1).FindUsages(
             Arg.Any<SourceLocation>(),

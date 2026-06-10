@@ -44,7 +44,7 @@ public sealed class StepReferencesHandler
         _logger         = logger;
     }
 
-    public Task<LocationOrLocationLinks?> Handle(
+    public Task<LocationOrLocationLinks?> HandleAsync(
         ReferenceParams request,
         CancellationToken cancellationToken)
     {

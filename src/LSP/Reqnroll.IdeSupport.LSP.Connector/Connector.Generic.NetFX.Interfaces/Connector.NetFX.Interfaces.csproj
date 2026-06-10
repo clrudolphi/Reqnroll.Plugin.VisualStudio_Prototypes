@@ -6,6 +6,7 @@
          (NetFxTestAssemblyContext.PROXYINTERFACEASSEMBLYNAME); it must match exactly. -->
     <AssemblyName>Reqnroll.VisualStudio.ReqnrollConnector.Generic.NetFX.Interfaces</AssemblyName>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>

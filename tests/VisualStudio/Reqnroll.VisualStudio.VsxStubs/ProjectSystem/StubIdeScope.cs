@@ -139,7 +139,7 @@ public class StubIdeScope : IIdeScope, IDisposable
         _fireAndForgetOnBackgroundThreadHandler = callback;
     }
 
-    public Task RunOnUiThread(Action action)
+    public Task RunOnUiThreadAsync(Action action)
     {
         action();
         return Task.CompletedTask;

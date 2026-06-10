@@ -20,7 +20,7 @@ public class VsReqnrollProjectWizard : VsTemplateWizardBase<ReqnrollProjectTempl
         // but we need them here too for the constructor. We create temporary
         // instances from the DTE; the context will be passed to RunStarted.
         var ideScope = VsUtils.SafeResolveMefDependency<IIdeScope>(dte);
-        if (ideScope == null) return null;
+        if (ideScope == null) return null!;
 
         var vsUiShell = VsUtils.SafeResolveMefDependency<Microsoft.VisualStudio.Shell.Interop.IVsUIShell>(dte);
         var dialogService = new VsWizardDialogService(vsUiShell);

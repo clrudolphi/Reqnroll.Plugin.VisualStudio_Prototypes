@@ -74,7 +74,7 @@ public class AppInsightsAnalyticsTransmitterSink : IAnalyticsTransmitterSink
                 break;
         }
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {

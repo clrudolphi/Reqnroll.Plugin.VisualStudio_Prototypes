@@ -39,6 +39,7 @@ public class VsIdeScope : IVsIdeScope
         IFileSystemForIDE fileSystem,
         Reqnroll.IdeSupport.VisualStudio.Diagnostics.DeveroomCompositeLogger compositeLogger)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         Logger = compositeLogger;
         ServiceProvider = serviceProvider;
         MonitoringService = monitoringService;
@@ -165,7 +166,7 @@ public class VsIdeScope : IVsIdeScope
     public void FireAndForgetOnBackgroundThread(Func<CancellationToken, Task> action,
         [CallerMemberName] string callerName = "???")
     {
-        Task.Factory.StartNew(async () =>
+        _ = Task.Factory.StartNew(async () =>
             {
                 try
                 {
@@ -183,7 +184,7 @@ public class VsIdeScope : IVsIdeScope
         );
     }
 
-    public async Task RunOnUiThread(Action action)
+    public async Task RunOnUiThreadAsync(Action action)
     {
         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
         action();
@@ -234,6 +235,7 @@ public class VsIdeScope : IVsIdeScope
 
     public IProjectScope GetProjectScope(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         if (project == null ||
             !VsUtils.IsSolutionProject(project))
             return new VoidProjectScope(this);
@@ -317,10 +319,15 @@ public class VsIdeScope : IVsIdeScope
     //    ProjectOutputsUpdated?.Invoke(this, EventArgs.Empty);
     //}
 
-    private string GetProjectId(Project project) => project.FullName;
+    private string GetProjectId(Project project)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return project.FullName;
+    }
 
     private VsProjectScope CreateProjectScope(string id, Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         OnActivityStarted();
         Logger.LogInfo($"Initializing project: {project.Name}");
         var projectScope = new VsProjectScope(id, project, this);
@@ -330,6 +337,7 @@ public class VsIdeScope : IVsIdeScope
 
     private bool HasFeatureFiles(Project project)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             if (!VsUtils.IsSolutionProject(project))

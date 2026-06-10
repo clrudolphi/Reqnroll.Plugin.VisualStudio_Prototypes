@@ -57,12 +57,12 @@ public sealed class OutProcReqnrollConnectorFactory : IOutProcConnectorFactory
     private static ProjectSettings BuildMinimalProjectSettings(TargetFrameworkMoniker? tfm)
         => new(
             DeveroomProjectKind.ReqnrollTestProject,
-            tfm,
+            tfm!,
             tfm?.Value ?? string.Empty,
             ProjectPlatformTarget.AnyCpu,
             string.Empty,
             string.Empty,
-            ReqnrollVersion: null,
+            ReqnrollVersion: null!,
             string.Empty,
             string.Empty,
             ReqnrollProjectTraits.None,

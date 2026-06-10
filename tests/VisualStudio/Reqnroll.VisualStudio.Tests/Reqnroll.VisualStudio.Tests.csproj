@@ -2,9 +2,10 @@
   <PropertyGroup>
     <TargetFramework>net481</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
-    <NoWarn>CS0067;VSTHRD200</NoWarn>
+    <NoWarn>CS0067;VSTHRD200;MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup Label="Deferred - depends on unported types">
     <!-- Editor commands, services, tagger not yet ported -->

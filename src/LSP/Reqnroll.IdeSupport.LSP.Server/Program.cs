@@ -155,7 +155,7 @@ public class Program
             // Seed workspace scopes from the folders sent during the initialize handshake.
             var scopeManager = languageServer.Services.GetRequiredService<ILspWorkspaceScopeManager>();
             serverServices = languageServer.Services; // Caching the service provider for later use in handlers that don't have it injected.
-            if (languageServer.ClientSettings.WorkspaceFolders != null)
+            if (languageServer.ClientSettings.WorkspaceFolders is not null)
             {
                 foreach (var folder in languageServer.ClientSettings.WorkspaceFolders)
                 {
@@ -209,17 +209,17 @@ public class Program
         // Directly wiring the handler to respond to specific request messages.
         options.OnRequest<SemanticTokensParams, SemanticTokens?>(
                     "textDocument/semanticTokens/full",
-                    (request, ct) => serverServices!.GetRequiredService<SemanticTokensHandler>().Handle(request, ct));
+                    (request, ct) => serverServices!.GetRequiredService<SemanticTokensHandler>().HandleAsync(request, ct));
         options.OnRequest<SemanticTokensDeltaParams, SemanticTokensFullOrDelta?>(
                     "textDocument/semanticTokens/full/delta",
-                    (request, ct) => serverServices!.GetRequiredService<SemanticTokensHandler>().Handle(request, ct));
+                    (request, ct) => serverServices!.GetRequiredService<SemanticTokensHandler>().HandleAsync(request, ct));
 
         // F14 — Find Step Definition Usages.
         // Registered manually (same pattern as semantic tokens) to avoid dynamic registration
         // ambiguity with the C# language server on .cs files. See design-doc Q13.
         options.OnRequest<ReferenceParams, LocationOrLocationLinks?>(
             "textDocument/references",
-            (request, ct) => serverServices!.GetRequiredService<StepReferencesHandler>().Handle(request, ct));
+            (request, ct) => serverServices!.GetRequiredService<StepReferencesHandler>().HandleAsync(request, ct));
 
         // F14 P2b — Custom reqnroll/findStepUsages request.
         // Delivers the full three-state contract (null / empty / locations) and per-location stepText
@@ -228,7 +228,7 @@ public class Program
         // spec-test compatibility and any future non-VS clients.
         options.OnRequest<ReferenceParams, FindStepUsagesResponse?>(
             "reqnroll/findStepUsages",
-            (request, ct) => serverServices!.GetRequiredService<FindStepUsagesHandler>().Handle(request, ct));
+            (request, ct) => serverServices!.GetRequiredService<FindStepUsagesHandler>().HandleAsync(request, ct));
 
     }
 }

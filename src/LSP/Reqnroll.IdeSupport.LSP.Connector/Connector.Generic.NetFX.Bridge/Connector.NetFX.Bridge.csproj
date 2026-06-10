@@ -6,6 +6,7 @@
          (NetFxTestAssemblyContext.BRIDGEASSEMBLYNAME); it must match exactly. -->
     <AssemblyName>Reqnroll.VisualStudio.ReqnrollConnector.Generic.NetFX.Bridge</AssemblyName>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>

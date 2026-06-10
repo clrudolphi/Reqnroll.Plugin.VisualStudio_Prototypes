@@ -41,7 +41,7 @@ public class GherkinDocumentContextCalculatorTests
         var background = feature.Children.OfType<Background>().Single();
         var bgStep = background.Steps.First();
 
-        var featureCtx = new SimpleContext(null, feature);
+        var featureCtx = new SimpleContext(null!, feature);
         var bgCtx = new SimpleContext(featureCtx, background);
 
         var results = GherkinDocumentContextCalculator
@@ -74,7 +74,7 @@ public class GherkinDocumentContextCalculatorTests
         var background = feature.Children.OfType<Background>().Single();
         var bgStep = background.Steps.First();
 
-        var featureCtx = new SimpleContext(null, feature);
+        var featureCtx = new SimpleContext(null!, feature);
         var bgCtx = new SimpleContext(featureCtx, background);
 
         var results = GherkinDocumentContextCalculator
@@ -101,7 +101,7 @@ public class GherkinDocumentContextCalculatorTests
         var background = feature.Children.OfType<Background>().Single();
         var bgStep = background.Steps.First();
 
-        var featureCtx = new SimpleContext(null, feature);
+        var featureCtx = new SimpleContext(null!, feature);
         var bgCtx = new SimpleContext(featureCtx, background);
 
         var results = GherkinDocumentContextCalculator
@@ -131,7 +131,7 @@ public class GherkinDocumentContextCalculatorTests
         var outline = doc.Feature.Children.OfType<ScenarioOutline>().Single();
         var step = outline.Steps.First();
 
-        var featureCtx = new SimpleContext(null, doc.Feature);
+        var featureCtx = new SimpleContext(null!, doc.Feature);
         var outlineCtx = new SimpleContext(featureCtx, outline);
 
         var results = GherkinDocumentContextCalculator
@@ -159,7 +159,7 @@ public class GherkinDocumentContextCalculatorTests
         var outline = doc.Feature.Children.OfType<ScenarioOutline>().Single();
         var step = outline.Steps.First();
 
-        var featureCtx = new SimpleContext(null, doc.Feature);
+        var featureCtx = new SimpleContext(null!, doc.Feature);
         var outlineCtx = new SimpleContext(featureCtx, outline);
 
         var results = GherkinDocumentContextCalculator
@@ -185,7 +185,7 @@ public class GherkinDocumentContextCalculatorTests
         var outline = doc.Feature.Children.OfType<ScenarioOutline>().Single();
         var step = outline.Steps.First();
 
-        var featureCtx = new SimpleContext(null, doc.Feature);
+        var featureCtx = new SimpleContext(null!, doc.Feature);
         var outlineCtx = new SimpleContext(featureCtx, outline);
 
         var results = GherkinDocumentContextCalculator
@@ -218,7 +218,7 @@ public class GherkinDocumentContextCalculatorTests
         var outline = doc.Feature.Children.OfType<ScenarioOutline>().Single();
         var step = outline.Steps.First();
 
-        var featureCtx = new SimpleContext(null, doc.Feature);
+        var featureCtx = new SimpleContext(null!, doc.Feature);
         var outlineCtx = new SimpleContext(featureCtx, outline);
 
         var results = GherkinDocumentContextCalculator

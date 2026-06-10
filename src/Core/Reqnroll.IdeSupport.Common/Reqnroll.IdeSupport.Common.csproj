@@ -3,7 +3,10 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
     <SignAssembly>true</SignAssembly>
+    <NoWarn>CS0067</NoWarn>
+    <!--CS0067: ConfigurationChanged is a required interface member; this impl intentionally never fires it-->
     <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 

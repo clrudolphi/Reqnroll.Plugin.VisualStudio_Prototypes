@@ -28,7 +28,7 @@ public class SemanticTokensHandler //: SemanticTokensHandlerBase
 
     // ── Full ──────────────────────────────────────────────────────────────────
 
-    public async Task<SemanticTokens?> Handle(
+    public async Task<SemanticTokens?> HandleAsync(
         SemanticTokensParams request,
         CancellationToken cancellationToken)
     {
@@ -45,7 +45,7 @@ public class SemanticTokensHandler //: SemanticTokensHandlerBase
     // ── Delta ─────────────────────────────────────────────────────────────────
     // We don't maintain delta state; return the full token set wrapped in SemanticTokensFullOrDelta.
 
-    public async Task<SemanticTokensFullOrDelta?> Handle(
+    public async Task<SemanticTokensFullOrDelta?> HandleAsync(
         SemanticTokensDeltaParams request,
         CancellationToken cancellationToken)
     {
@@ -64,7 +64,7 @@ public class SemanticTokensHandler //: SemanticTokensHandlerBase
     // ── Range ─────────────────────────────────────────────────────────────────
     // Return all tokens; the client will filter by range.
 
-    public async Task<SemanticTokens?> Handle(
+    public async Task<SemanticTokens?> HandleAsync(
         SemanticTokensRangeParams request,
         CancellationToken cancellationToken)
     {

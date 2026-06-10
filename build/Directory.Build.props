@@ -4,5 +4,6 @@
   <PropertyGroup>
 	<!-- Strong-naming key shared by all signed assemblies -->
 	<RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>

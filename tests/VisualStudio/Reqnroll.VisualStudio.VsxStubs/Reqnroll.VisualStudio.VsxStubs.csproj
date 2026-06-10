@@ -2,13 +2,15 @@
   <PropertyGroup>
     <TargetFramework>net481</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
     <UseWPF>true</UseWPF>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
     <VsEditorAssembliesLocation Condition="'$(VsEditorAssembliesLocation)' == ''">$(MSBuildThisFileDirectory)..\ExternalTestDependencies\VS\</VsEditorAssembliesLocation>
-    <NoWarn>CS0067;VSTHRD200</NoWarn>
+    <NoWarn>CS0067;VSTHRD200;VSTHRD002</NoWarn>
     <!--CS0067: The event 'xxx' is never used-->
     <!--VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type.-->
+    <!--VSTHRD002: Stub uses .Wait() intentionally; not in production code-->
   </PropertyGroup>
 
   <ItemGroup>

@@ -26,7 +26,11 @@ public class VersionProvider : IVersionProvider
 
     public string GetExtensionVersion() => _lazyExtensionVersion.Value;
 
-    private string GetVsProductDisplayVersion() => VsUtils.GetVsProductDisplayVersionSafe(_serviceProvider);
+    private string GetVsProductDisplayVersion()
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return VsUtils.GetVsProductDisplayVersionSafe(_serviceProvider);
+    }
 
     private string ReadExtensionVersion()
     {

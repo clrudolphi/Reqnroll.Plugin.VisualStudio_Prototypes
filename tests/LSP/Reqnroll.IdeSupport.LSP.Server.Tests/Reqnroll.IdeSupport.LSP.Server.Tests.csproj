@@ -8,6 +8,9 @@
     <IsPackable>false</IsPackable>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>../../../reqnroll.snk</AssemblyOriginatorKeyFile>
+    <NoWarn>NU1701;VSTHRD200</NoWarn>
+    <!-- NU1701: .NET Framework packages (e.g., OmniSharp.Extensions.LanguageServer) are safe to use -->
+    <!-- VSTHRD200: Test methods don't require "Async" suffix convention -->
   </PropertyGroup>
 
   <ItemGroup>

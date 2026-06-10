@@ -8,6 +8,7 @@ using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
 using Reqnroll.IdeSupport.VisualStudio.Common;
 using Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
+using Microsoft.VisualStudio.Shell;
 using System.Collections.Concurrent;
 
 namespace Reqnroll.IdeSupport.VisualStudio.SDKIntegration;
@@ -18,6 +19,7 @@ public class VsProjectScope : IProjectScope
 
     public VsProjectScope(string id, Project project, IIdeScope ideScope)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         _project = project;
         IdeScope = ideScope;
         ProjectFolder = VsUtils.GetProjectFolder(project);
@@ -30,16 +32,16 @@ public class VsProjectScope : IProjectScope
     private IMonitoringService MonitoringService => IdeScope.MonitoringService;
     public ConcurrentDictionary<Type, object> Properties { get; } = new();
     public string ProjectFolder { get; }
-    public string OutputAssemblyPath => VsUtils.GetOutputAssemblyPath(_project);
-    public string TargetFrameworkMoniker => VsUtils.GetTargetFrameworkMoniker(_project);
-    public string TargetFrameworkMonikers => VsUtils.GetTargetFrameworkMonikers(_project);
-    public string PlatformTargetName => VsUtils.GetPlatformTargetName(_project) ?? VsUtils.GetPlatformName(_project);
+    public string OutputAssemblyPath { get { ThreadHelper.ThrowIfNotOnUIThread(); return VsUtils.GetOutputAssemblyPath(_project); } }
+    public string TargetFrameworkMoniker { get { ThreadHelper.ThrowIfNotOnUIThread(); return VsUtils.GetTargetFrameworkMoniker(_project); } }
+    public string TargetFrameworkMonikers { get { ThreadHelper.ThrowIfNotOnUIThread(); return VsUtils.GetTargetFrameworkMonikers(_project); } }
+    public string PlatformTargetName { get { ThreadHelper.ThrowIfNotOnUIThread(); return VsUtils.GetPlatformTargetName(_project) ?? VsUtils.GetPlatformName(_project); } }
     public string ProjectName { get; }
     public string ProjectFullName { get; }
-    public string DefaultNamespace => GetDefaultNamespace();
+    public string DefaultNamespace { get { ThreadHelper.ThrowIfNotOnUIThread(); return GetDefaultNamespace(); } }
 
     public IIdeScope IdeScope { get; }
-    public IEnumerable<NuGetPackageReference> PackageReferences => GetPackageReferences();
+    public IEnumerable<NuGetPackageReference> PackageReferences { get { ThreadHelper.ThrowIfNotOnUIThread(); return GetPackageReferences(); } }
 
     //public void AddFile(string targetFilePath, string template)
     //{
@@ -50,6 +52,7 @@ public class VsProjectScope : IProjectScope
 
     public int? GetFeatureFileCount()
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return VsUtils.GetPhysicalFileProjectItems(_project)
@@ -64,6 +67,7 @@ public class VsProjectScope : IProjectScope
 
     public string[] GetProjectFiles(string extension)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return VsUtils.GetPhysicalFileProjectItems(_project)
@@ -86,19 +90,20 @@ public class VsProjectScope : IProjectScope
 
     private string GetDefaultNamespace()
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return _project.Properties.Item("DefaultNamespace")?.Value as string;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            //Logger.LogException(MonitoringService, e);
             return null;
         }
     }
 
     private NuGetPackageReference[] GetPackageReferences()
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         try
         {
             return VsUtils.GetInstalledNuGetPackages((IdeScope as VsIdeScope).ServiceProvider, _project.FullName)

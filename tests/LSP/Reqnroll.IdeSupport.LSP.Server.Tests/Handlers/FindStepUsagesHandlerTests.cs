@@ -65,7 +65,7 @@ public class FindStepUsagesHandlerTests
     [Fact]
     public async Task Handle_non_cs_uri_returns_null_without_querying_match_service()
     {
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(FeatureUri, 2, 0), CancellationToken.None);
 
         result.Should().BeNull();
@@ -83,7 +83,7 @@ public class FindStepUsagesHandlerTests
         _registryLookup.HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>())
                         .Returns(false);
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 0, 0), CancellationToken.None);
 
         // isBinding=false signals "not a binding": client falls through to built-in C# FAR.
@@ -104,7 +104,7 @@ public class FindStepUsagesHandlerTests
         _registryLookup.HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>())
                         .Returns(true);
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result.Should().NotBeNull();
@@ -120,7 +120,7 @@ public class FindStepUsagesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result.Should().NotBeNull();
@@ -139,7 +139,7 @@ public class FindStepUsagesHandlerTests
                          MakeMatch(secondUri,  33, 6)
                      });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result!.Locations.Should().HaveCount(2);
@@ -151,7 +151,7 @@ public class FindStepUsagesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        await CreateSut().Handle(RequestAt(CsUri, 9, 0), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         _registryLookup.DidNotReceive()
                         .HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>());
@@ -165,7 +165,7 @@ public class FindStepUsagesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         result!.Locations.Single().Uri.Should().Be(FeatureUri.ToString());
@@ -177,7 +177,7 @@ public class FindStepUsagesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         // offset 33 in "Feature: F\n(11)Scenario: S\n(12)    Given a step\n"
@@ -195,7 +195,7 @@ public class FindStepUsagesHandlerTests
         _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
                      .Returns(new[] { MakeMatch(FeatureUri, 33, 6) });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         // offset 33 length 6 in the snapshot → "a step" (trimmed)
@@ -214,7 +214,7 @@ public class FindStepUsagesHandlerTests
                                    projectName:  "MyProject")
                      });
 
-        var result = await CreateSut().Handle(
+        var result = await CreateSut().HandleAsync(
             RequestAt(CsUri, 9, 0), CancellationToken.None);
 
         var loc = result!.Locations.Single();
@@ -235,7 +235,7 @@ public class FindStepUsagesHandlerTests
         _registryLookup.HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>())
                         .Returns(false);
 
-        await CreateSut().Handle(RequestAt(CsUri, 9, 4), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 9, 4), CancellationToken.None);
 
         captured!.SourceFileLine.Should().Be(10);
     }
@@ -250,7 +250,7 @@ public class FindStepUsagesHandlerTests
         _registryLookup.HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>())
                         .Returns(false);
 
-        await CreateSut().Handle(RequestAt(CsUri, 9, 4), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 9, 4), CancellationToken.None);
 
         captured!.SourceFileColumn.Should().Be(5);
     }
@@ -278,7 +278,7 @@ public class FindStepUsagesHandlerTests
         _registryLookup.HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>())
                         .Returns(false);
 
-        await CreateSut().Handle(RequestAt(CsUri, 0, 0), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 0, 0), CancellationToken.None);
 
         _matchService.Received(1).FindUsages(
             Arg.Any<SourceLocation>(),
@@ -297,7 +297,7 @@ public class FindStepUsagesHandlerTests
         _registryLookup.HasBindingAtLocation(Arg.Any<DocumentUri>(), Arg.Any<SourceLocation>())
                         .Returns(false);
 
-        await CreateSut().Handle(RequestAt(CsUri, 0, 0), CancellationToken.None);
+        await CreateSut().HandleAsync(RequestAt(CsUri, 0, 0), CancellationToken.None);
 
         _matchService.Received(1).FindUsages(
             Arg.Any<SourceLocation>(),

@@ -154,7 +154,7 @@ public abstract class OutProcReqnrollConnector
 
     protected abstract string GetConnectorPath(List<string> arguments);
 
-    private static string? ExtractJsonPayload(string stdout)
+    private static string ExtractJsonPayload(string stdout)
     {
         const string open  = ">>>>>>>>>>";
         const string close = "<<<<<<<<<<";

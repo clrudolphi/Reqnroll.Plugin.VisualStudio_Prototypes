@@ -49,7 +49,7 @@ public sealed class FeatureDefinitionHandler : IDefinitionHandler
                 new TextDocumentFilter { Pattern = "**/*.feature" })
         };
 
-    public Task<LocationOrLocationLinks> Handle(
+    public Task<LocationOrLocationLinks?> Handle(
         DefinitionParams  request,
         CancellationToken cancellationToken)
     {
@@ -58,13 +58,13 @@ public sealed class FeatureDefinitionHandler : IDefinitionHandler
         if (!IsFeatureFile(uri))
         {
             _logger.LogVerbose($"FeatureDefinitionHandler: ignoring non-.feature URI {uri}");
-            return Task.FromResult(new LocationOrLocationLinks());
+            return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
         if (!_bufferService.TryGet(uri, out var buffer) || buffer is null)
         {
             _logger.LogVerbose($"FeatureDefinitionHandler: no document buffer for {uri}");
-            return Task.FromResult(new LocationOrLocationLinks());
+            return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
         var snapshot = buffer.ToGherkinTextSnapshot();
@@ -80,14 +80,14 @@ public sealed class FeatureDefinitionHandler : IDefinitionHandler
         if (!_matchService.TryGet(new MatchSetKey(docId, owner), out var matchSet) || matchSet is null)
         {
             _logger.LogVerbose($"FeatureDefinitionHandler: no match set cached for {uri}");
-            return Task.FromResult(new LocationOrLocationLinks());
+            return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
         var step = matchSet.FindAt(offset);
         if (step is null)
         {
             _logger.LogVerbose($"FeatureDefinitionHandler: no step at offset {offset} in {uri}");
-            return Task.FromResult(new LocationOrLocationLinks());
+            return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
         var locations = step.BindingLocations
@@ -98,13 +98,13 @@ public sealed class FeatureDefinitionHandler : IDefinitionHandler
         {
             _logger.LogVerbose(
                 $"FeatureDefinitionHandler: step at offset {offset} in {uri} has no binding locations (undefined/ambiguous)");
-            return Task.FromResult(new LocationOrLocationLinks());
+            return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
         _logger.LogVerbose(
             $"FeatureDefinitionHandler: {locations.Length} location(s) for step at offset {offset} in {uri}");
 
-        return Task.FromResult(new LocationOrLocationLinks(locations));
+        return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks(locations));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

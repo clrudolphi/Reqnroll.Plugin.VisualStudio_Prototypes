@@ -5,6 +5,7 @@
     <AssemblyName>reqnroll-ide-connector</AssemblyName>
     <TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0;net481;net462;net472</TargetFrameworks>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
@@ -17,10 +18,11 @@
          OutProcReqnrollConnector.GetConnectorsFolder() appends "Connectors\", so the
          expected runtime path is LSPServer\Connectors\Reqnroll-Generic-{tfm}\. -->
     <_OutputCopyLocation>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\Reqnroll.IdeSupport.LSP.Server\bin\$(Configuration)\net10.0\win-x64\Connectors\Reqnroll-Generic-$(TargetFramework)'))</_OutputCopyLocation>
-    <NoWarn>NETSDK1138;NETSDK1233</NoWarn>
+    <NoWarn>NETSDK1138;NETSDK1233;MSB3277</NoWarn>
     <!--
     NETSDK1138: The target framework 'netXX.0' is out of support
     NETSDK1233: Targeting .NET 10.0 or higher in Visual Studio 2022 17.14 is not supported.
+    MSB3277: Expected assembly version conflicts when building multi-TFM (net10.0, net481, etc.)
     -->
   </PropertyGroup>
 

@@ -25,7 +25,7 @@ public class WorkspaceFoldersHandler : IDidChangeWorkspaceFoldersHandler
 
     public Task<Unit> Handle(DidChangeWorkspaceFoldersParams request, CancellationToken cancellationToken)
     {
-        if (request.Event?.Added != null)
+        if (request.Event?.Added is not null)
         {
             foreach (var folder in request.Event.Added)
             {
@@ -38,7 +38,7 @@ public class WorkspaceFoldersHandler : IDidChangeWorkspaceFoldersHandler
             }
         }
 
-        if (request.Event?.Removed != null)
+        if (request.Event?.Removed is not null)
         {
             foreach (var folder in request.Event.Removed)
             {

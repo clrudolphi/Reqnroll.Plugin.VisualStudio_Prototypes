@@ -44,6 +44,7 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
         {
             Watchers = new[]
             {
+#pragma warning disable CS8601 // GlobPattern implicit conversion from string returns GlobPattern? but value is provably non-null
                 new OmniSharp.Extensions.LanguageServer.Protocol.Models.FileSystemWatcher
                 {
                     GlobPattern = "**/reqnroll.json",
@@ -57,6 +58,7 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
                     GlobPattern = "**/bin/**/*.dll",
                     Kind        = WatchKind.Create | WatchKind.Change
                 }
+#pragma warning restore CS8601
             }
         };
 

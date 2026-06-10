@@ -30,6 +30,7 @@ public static class ServiceProviderExtensions
 
     public static uint GetCmdUIContextCookie(this IVsMonitorSelection vsMonitorSelection, Guid id)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         ErrorHandler.ThrowOnFailure(vsMonitorSelection.GetCmdUIContextCookie(ref id, out var cookie));
         return cookie;
     }

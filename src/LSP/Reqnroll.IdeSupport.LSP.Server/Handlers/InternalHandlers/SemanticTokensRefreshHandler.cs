@@ -51,7 +51,9 @@ public class SemanticTokensRefreshHandler : INotificationHandler<MatchCacheChang
         CancellationTokenSource newCts;
         lock (_debounceLock)
         {
+#pragma warning disable VSTHRD103 // Cancel() inside a lock; CancelAsync() cannot be awaited here
             _debounceCts?.Cancel();
+#pragma warning restore VSTHRD103
             _debounceCts?.Dispose();
             newCts = _debounceCts = new CancellationTokenSource();
         }
