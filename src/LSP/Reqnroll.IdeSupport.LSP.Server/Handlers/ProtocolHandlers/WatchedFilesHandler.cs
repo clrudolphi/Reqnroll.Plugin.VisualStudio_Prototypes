@@ -2,6 +2,7 @@ using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
+using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
@@ -16,6 +17,10 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 ///   <item><term>reqnroll.json changes</term>
 ///     <description>Reload the owning project's configuration and trigger binding re-discovery.</description>
 ///   </item>
+///   <item><term>.editorconfig changes</term>
+///     <description>Invalidate the EditorConfig cache and reload configuration for all projects
+///     in the affected workspace scope.</description>
+///   </item>
 ///   <item><term>Output assembly changes (<c>bin/**/*.dll</c>)</term>
 ///     <description>Trigger binding re-discovery for the project whose output path matches.</description>
 ///   </item>
@@ -23,18 +28,21 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 /// </summary>
 public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
 {
-    private readonly ILspWorkspaceScopeManager _scopeManager;
-    private readonly IMediator                 _mediator;
-    private readonly IDeveroomLogger            _logger;
+    private readonly ILspWorkspaceScopeManager  _scopeManager;
+    private readonly IMediator                  _mediator;
+    private readonly IDeveroomLogger             _logger;
+    private readonly IEditorConfigOptionsProvider _editorConfigProvider;
 
     public WatchedFilesHandler(
         ILspWorkspaceScopeManager scopeManager,
         IMediator mediator,
-        IDeveroomLogger logger)
+        IDeveroomLogger logger,
+        IEditorConfigOptionsProvider editorConfigProvider)
     {
-        _scopeManager = scopeManager;
-        _mediator     = mediator;
-        _logger       = logger;
+        _scopeManager         = scopeManager;
+        _mediator             = mediator;
+        _logger               = logger;
+        _editorConfigProvider = editorConfigProvider;
     }
 
     public DidChangeWatchedFilesRegistrationOptions GetRegistrationOptions(
@@ -48,6 +56,11 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
                 new OmniSharp.Extensions.LanguageServer.Protocol.Models.FileSystemWatcher
                 {
                     GlobPattern = "**/reqnroll.json",
+                    Kind        = WatchKind.Create | WatchKind.Change | WatchKind.Delete
+                },
+                new OmniSharp.Extensions.LanguageServer.Protocol.Models.FileSystemWatcher
+                {
+                    GlobPattern = "**/.editorconfig",
                     Kind        = WatchKind.Create | WatchKind.Change | WatchKind.Delete
                 },
                 // Broad watcher for rebuilt output assemblies.  Narrowed to the specific
@@ -77,6 +90,11 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
                 await HandleConfigChangeAsync(uri, filePath, changeType, cancellationToken)
                     .ConfigureAwait(false);
             }
+            else if (IsEditorConfig(filePath))
+            {
+                await HandleEditorConfigChangeAsync(uri, filePath, changeType, cancellationToken)
+                    .ConfigureAwait(false);
+            }
             else if (IsOutputAssembly(filePath))
             {
                 HandleOutputAssemblyChange(filePath, changeType);
@@ -86,7 +104,7 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
         return MediatR.Unit.Value;
     }
 
-    // ── Config change ─────────────────────────────────────────────────────────
+    // ── reqnroll.json change ──────────────────────────────────────────────────
 
     private async Task HandleConfigChangeAsync(
         OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
@@ -117,6 +135,40 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
         TriggerBindingDiscovery(project, "config change");
     }
 
+    // ── .editorconfig change ──────────────────────────────────────────────────
+
+    private async Task HandleEditorConfigChangeAsync(
+        OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
+        string filePath,
+        FileChangeType changeType,
+        CancellationToken ct)
+    {
+        // Always evict the parse cache so the next EditorConfig lookup re-reads from disk.
+        _editorConfigProvider.InvalidateCache(filePath);
+
+        var scope = _scopeManager.GetScopeForUri(uri);
+        if (scope is null)
+        {
+            _logger.LogVerbose(
+                $".editorconfig {changeType}: {filePath} — no matching workspace scope; cache invalidated.");
+            return;
+        }
+
+        _logger.LogInfo(
+            $".editorconfig {changeType}: reloading config for {scope.Projects.Count} project(s) in '{scope.RootFolder}'");
+
+        foreach (var project in scope.Projects)
+        {
+            var provider = project.GetDeveroomConfigurationProvider()
+                as ProjectScopeDeveroomConfigurationProvider;
+            provider?.Reload();
+
+            await _mediator.Publish(
+                new ReqnrollConfigChangedNotification(project.ProjectFolder), ct)
+                .ConfigureAwait(false);
+        }
+    }
+
     // ── Output assembly change ────────────────────────────────────────────────
 
     private void HandleOutputAssemblyChange(string filePath, FileChangeType changeType)
@@ -141,6 +193,10 @@ public class WatchedFilesHandler : IDidChangeWatchedFilesHandler
     private static bool IsReqnrollConfig(string filePath)
         => Path.GetFileName(filePath).Equals(
             "reqnroll.json", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsEditorConfig(string filePath)
+        => Path.GetFileName(filePath).Equals(
+            ".editorconfig", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsOutputAssembly(string filePath)
         => filePath.IndexOf(

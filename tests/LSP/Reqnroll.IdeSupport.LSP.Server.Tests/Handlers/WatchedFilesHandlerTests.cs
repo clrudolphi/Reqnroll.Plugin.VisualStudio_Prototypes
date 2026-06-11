@@ -1,5 +1,6 @@
 using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Protocol;
@@ -9,9 +10,10 @@ namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;
 
 public class WatchedFilesHandlerTests : IDisposable
 {
-    private readonly ILspWorkspaceScopeManager _scopeManager = Substitute.For<ILspWorkspaceScopeManager>();
-    private readonly IMediator _mediator = Substitute.For<IMediator>();
-    private readonly IDeveroomLogger _logger = Substitute.For<IDeveroomLogger>();
+    private readonly ILspWorkspaceScopeManager    _scopeManager         = Substitute.For<ILspWorkspaceScopeManager>();
+    private readonly IMediator                    _mediator             = Substitute.For<IMediator>();
+    private readonly IDeveroomLogger               _logger               = Substitute.For<IDeveroomLogger>();
+    private readonly IEditorConfigOptionsProvider  _editorConfigProvider = Substitute.For<IEditorConfigOptionsProvider>();
     private readonly LspIdeScope _ideScope;
     private readonly string _projectFolder;
 
@@ -28,7 +30,8 @@ public class WatchedFilesHandlerTests : IDisposable
             Directory.Delete(_projectFolder, recursive: true);
     }
 
-    private WatchedFilesHandler CreateSut() => new(_scopeManager, _mediator, _logger);
+    private WatchedFilesHandler CreateSut()
+        => new(_scopeManager, _mediator, _logger, _editorConfigProvider);
 
     private LspReqnrollProject MakeProject()
     {
@@ -41,6 +44,20 @@ public class WatchedFilesHandlerTests : IDisposable
             TargetFrameworkMoniker = ".NETCoreApp,Version=v8.0"
         };
         return new LspReqnrollProject(info, _ideScope);
+    }
+
+    private LspProjectScope MakeScope(LspReqnrollProject project)
+    {
+        var scope = new LspProjectScope(_projectFolder, _ideScope);
+        scope.AddOrUpdateProject(new ReqnrollProjectLoadedParams
+        {
+            WorkspaceFolder        = _projectFolder,
+            ProjectFile            = project.ProjectFullName,
+            ProjectFolder          = project.ProjectFolder,
+            OutputAssemblyPath     = project.OutputAssemblyPath,
+            TargetFrameworkMoniker = ".NETCoreApp,Version=v8.0"
+        });
+        return scope;
     }
 
     private static DidChangeWatchedFilesParams MakeParams(string filePath, FileChangeType changeType)
@@ -84,6 +101,50 @@ public class WatchedFilesHandlerTests : IDisposable
             Arg.Any<INotification>(), Arg.Any<CancellationToken>());
     }
 
+    // ── .editorconfig change ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_invalidates_editorconfig_cache_on_change()
+    {
+        _scopeManager.GetScopeForUri(Arg.Any<DocumentUri>()).Returns((LspProjectScope?)null);
+
+        var sut = CreateSut();
+        var ecPath = Path.Combine(_projectFolder, ".editorconfig");
+        await sut.Handle(MakeParams(ecPath, FileChangeType.Changed), CancellationToken.None);
+
+        _editorConfigProvider.Received(1).InvalidateCache(
+            Arg.Is<string>(p => p.EndsWith(".editorconfig")));
+    }
+
+    [Fact]
+    public async Task Handle_publishes_config_changed_for_each_project_in_scope_on_editorconfig_change()
+    {
+        var project = MakeProject();
+        var scope   = MakeScope(project);
+        _scopeManager.GetScopeForUri(Arg.Any<DocumentUri>()).Returns(scope);
+
+        var sut = CreateSut();
+        var ecPath = Path.Combine(_projectFolder, ".editorconfig");
+        await sut.Handle(MakeParams(ecPath, FileChangeType.Changed), CancellationToken.None);
+
+        await _mediator.Received(1).Publish(
+            Arg.Any<INotification>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_skips_publish_but_still_invalidates_cache_when_no_scope_matches_editorconfig()
+    {
+        _scopeManager.GetScopeForUri(Arg.Any<DocumentUri>()).Returns((LspProjectScope?)null);
+
+        var sut = CreateSut();
+        var ecPath = Path.Combine(_projectFolder, ".editorconfig");
+        await sut.Handle(MakeParams(ecPath, FileChangeType.Changed), CancellationToken.None);
+
+        _editorConfigProvider.Received(1).InvalidateCache(Arg.Any<string>());
+        await _mediator.DidNotReceiveWithAnyArgs()
+            .Publish(Arg.Any<INotification>(), Arg.Any<CancellationToken>());
+    }
+
     // ── Output assembly change routes via GetProjectByOutputPath ──────────────
 
     [Fact]
@@ -120,6 +181,15 @@ public class WatchedFilesHandlerTests : IDisposable
         var options = sut.GetRegistrationOptions(null!, null!);
         options.Watchers.Should().ContainSingle(w =>
             w.GlobPattern.ToString()!.Contains("reqnroll.json"));
+    }
+
+    [Fact]
+    public void GetRegistrationOptions_watches_editorconfig()
+    {
+        var sut = CreateSut();
+        var options = sut.GetRegistrationOptions(null!, null!);
+        options.Watchers.Should().Contain(w =>
+            w.GlobPattern.ToString()!.Contains(".editorconfig"));
     }
 
     [Fact]

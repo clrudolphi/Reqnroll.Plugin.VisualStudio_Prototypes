@@ -15,6 +15,8 @@ using Reqnroll.IdeSupport.LSP.Server.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Completions;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Completions.Matching;
+using Reqnroll.IdeSupport.Common.Configuration;
+using Reqnroll.IdeSupport.LSP.Server.Configuration;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.InternalHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
@@ -103,6 +105,9 @@ public class Program
                .AddSingleton(new ClientIdeContext(clientIde))
                .AddSingleton<IDeveroomLogger, LspDeveroomLogger>()
                .AddSingleton<IIdeScope, LspIdeScope>()
+               .AddSingleton<IEditorConfigOptionsProvider>(sp =>
+                   new FileSystemEditorConfigOptionsProvider(
+                       sp.GetRequiredService<IIdeScope>().FileSystem))
                .AddSingleton<IMonitoringService>(sp => NullMonitoringService.Instance)
                .AddSingleton<IDeveroomConfigurationProvider, ProjectSystemDeveroomConfigurationProvider>()
                .AddSingleton<ILspWorkspaceScopeManager, LspWorkspaceScopeManager>()

@@ -11,6 +11,11 @@ public class CSharpCodeGenerationConfiguration
     [EditorConfigSetting("csharp_style_namespace_declarations")]
     public string? NamespaceDeclarationStyle { get; set; } = "block_scoped";
 
+    public CSharpCodeGenerationConfiguration Clone() => new()
+    {
+        NamespaceDeclarationStyle = NamespaceDeclarationStyle,
+    };
+
     /// <summary>
     /// Determines if file-scoped namespaces should be used based on the EditorConfig setting.
     /// </summary>

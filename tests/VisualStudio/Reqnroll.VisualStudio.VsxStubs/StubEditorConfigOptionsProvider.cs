@@ -1,10 +1,11 @@
-#if false // Deferred: IEditorConfigOptionsProvider, IEditorConfigOptions not yet ported
+using Reqnroll.IdeSupport.Common.Configuration;
+
 namespace Reqnroll.VisualStudio.VsxStubs;
 
-public class StubEditorConfigOptionsProvider
+public class StubEditorConfigOptionsProvider : IEditorConfigOptionsProvider
 {
-    public IEditorConfigOptions GetEditorConfigOptions(IWpfTextView textView) => new NullEditorConfigOptions();
-    public IEditorConfigOptions GetEditorConfigOptionsByPath(string filePath) => new NullEditorConfigOptions();
-}
+    public IEditorConfigOptions GetEditorConfigOptionsByPath(string filePath)
+        => NullEditorConfigOptions.Instance;
 
-#endif
+    public void InvalidateCache(string editorConfigFilePath) { }
+}

@@ -62,6 +62,20 @@ public class GherkinFormatConfiguration
     [EditorConfigSetting("gherkin_table_cell_right_align_numeric_content")]
     public bool TableCellRightAlignNumericContent { get; set; } = true;
 
+    public GherkinFormatConfiguration Clone() => new()
+    {
+        IndentFeatureChildren           = IndentFeatureChildren,
+        IndentRuleChildren              = IndentRuleChildren,
+        IndentSteps                     = IndentSteps,
+        IndentAndSteps                  = IndentAndSteps,
+        IndentDataTable                 = IndentDataTable,
+        IndentDocString                 = IndentDocString,
+        IndentExamples                  = IndentExamples,
+        IndentExamplesTable             = IndentExamplesTable,
+        TableCellPaddingSize            = TableCellPaddingSize,
+        TableCellRightAlignNumericContent = TableCellRightAlignNumericContent,
+    };
+
     public void CheckConfiguration()
     {
         // nop
