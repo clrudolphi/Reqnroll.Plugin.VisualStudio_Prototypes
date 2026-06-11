@@ -53,6 +53,9 @@ internal sealed class FindStepUsagesCommand : Command
         // the C# editor context menu (Surface 2).
         Icon = new CommandIconConfiguration(ImageMoniker.Custom("ReqnrollIcon"), IconSettings.IconAndText),
 
+        // Show only when a C# file editor is active; invisible in all other editors (including .feature files).
+        VisibleWhen = ActivationConstraint.EditorContentType("CSharp"),
+
         Placements =
         [
             // Surface 1 — child of the Reqnroll submenu in the Extensions menu (ReqnrollMenu.cs).

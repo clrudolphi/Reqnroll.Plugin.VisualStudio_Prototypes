@@ -94,12 +94,13 @@ public sealed class GoToStepDefinitionsHandler
             if (src is null || string.IsNullOrEmpty(src.SourceFile))
                 continue;
 
+            var identSrc = src.WithIdentifierLocation(binding!.Implementation?.Method);
             response.StepDefinitions.Add(new GoToStepDefinitionLocation
             {
-                Uri        = DocumentUri.FromFileSystemPath(src.SourceFile).ToString(),
-                StartLine  = src.SourceFileLine   - 1,
-                StartChar  = src.SourceFileColumn - 1,
-                StepType   = binding!.StepDefinitionType.ToString(),
+                Uri        = DocumentUri.FromFileSystemPath(identSrc.SourceFile).ToString(),
+                StartLine  = identSrc.SourceFileLine   - 1,
+                StartChar  = identSrc.SourceFileColumn - 1,
+                StepType   = binding.StepDefinitionType.ToString(),
                 MethodName = binding.Implementation?.Method ?? string.Empty,
             });
         }

@@ -90,7 +90,10 @@ public sealed class FeatureDefinitionHandler : IDefinitionHandler
             return Task.FromResult<LocationOrLocationLinks?>(new LocationOrLocationLinks());
         }
 
-        var locations = step.BindingLocations
+        var locations = step.Result.Items
+            .Select(item => item.MatchedStepDefinition?.Implementation)
+            .Where(impl => impl?.SourceLocation?.SourceFile is not (null or ""))
+            .Select(impl => impl!.SourceLocation!.WithIdentifierLocation(impl.Method))
             .Select(loc => new LocationOrLocationLink(loc.ToLspLocation()))
             .ToArray();
 
