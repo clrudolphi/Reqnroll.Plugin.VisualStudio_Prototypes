@@ -152,7 +152,7 @@ public class DeveroomTagParserTests
     // ── Ambiguous step ────────────────────────────────────────────────────────
 
     [Fact]
-    public void Ambiguous_step_produces_BindingError_tag()
+    public void Ambiguous_step_produces_AmbiguousStep_tag()
     {
         var b1 = new ProjectStepDefinitionBinding(ScenarioBlock.Given,
             new Regex("^ambiguous step$"), null,
@@ -164,7 +164,23 @@ public class DeveroomTagParserTests
 
         var text = "Feature: F\nScenario: S\n  Given ambiguous step\n";
         var tags = ParseTags(text, registry);
-        tags.Any(t => t.Type == DeveroomTagTypes.BindingError).Should().BeTrue();
+        tags.Any(t => t.Type == DeveroomTagTypes.AmbiguousStep).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Ambiguous_step_does_not_produce_BindingError_tag()
+    {
+        var b1 = new ProjectStepDefinitionBinding(ScenarioBlock.Given,
+            new Regex("^ambiguous step$"), null,
+            new ProjectBindingImplementation("Method1", null, new SourceLocation("A.cs", 1, 1)));
+        var b2 = new ProjectStepDefinitionBinding(ScenarioBlock.Given,
+            new Regex("^ambiguous step$"), null,
+            new ProjectBindingImplementation("Method2", null, new SourceLocation("B.cs", 1, 1)));
+        var registry = RegistryWith(b1, b2);
+
+        var text = "Feature: F\nScenario: S\n  Given ambiguous step\n";
+        var tags = ParseTags(text, registry);
+        tags.Any(t => t.Type == DeveroomTagTypes.BindingError).Should().BeFalse();
     }
 
     // ── Step with parameter ───────────────────────────────────────────────────

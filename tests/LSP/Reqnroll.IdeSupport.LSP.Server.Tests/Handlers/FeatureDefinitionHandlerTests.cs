@@ -215,6 +215,105 @@ public class FeatureDefinitionHandlerTests
         range.End.Character.Should().Be(range.Start.Character);
     }
 
+    // ── Ambiguous step — multiple bindings ───────────────────────────────────
+
+    /// <summary>
+    /// Builds a StepBindingMatch whose MatchResult has two Ambiguous items pointing to
+    /// different source locations — simulates a step matched by more than one step definition.
+    /// </summary>
+    private static StepBindingMatch MakeAmbiguousMatch(
+        (string file, int line, int col)[] bindings,
+        int startOffset = 33, int length = 6)
+    {
+        var snapshot = new LspTextSnapshot(FeatureUri.ToString(), 1, FeatureText);
+        var range    = GherkinRange.FromPoint(snapshot, startOffset, length);
+
+        var items = bindings
+            .Select(b =>
+            {
+                var binding = new ProjectStepDefinitionBinding(
+                    ScenarioBlock.Given,
+                    new Regex("^a step$"),
+                    null,
+                    new ProjectBindingImplementation(
+                        "AStep",
+                        null,
+                        new SourceLocation(b.file, b.line, b.col)));
+                return MatchResultItem.CreateMatch(binding, ParameterMatch.NotMatch)
+                                     .CloneToAmbiguousItem();
+            })
+            .ToArray();
+
+        var result = MatchResult.CreateMultiMatch(items);
+        return new StepBindingMatch(FeatureUri.ToString(), range, result);
+    }
+
+    [Fact]
+    public async Task Handle_ambiguous_step_returns_all_binding_locations_Async()
+    {
+        var step = MakeAmbiguousMatch(new[]
+        {
+            ("/workspace/StepsA.cs", 10, 5),
+            ("/workspace/StepsB.cs", 20, 3),
+        });
+        _matchService.Store(new FeatureBindingMatchSet(
+            FeatureUri.ToString(), ProjectOwner.Unknown, 1, 1, new[] { step }));
+
+        var result = await CreateSut().Handle(
+            RequestAt(FeatureUri, 2, 10), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_ambiguous_step_each_location_points_to_correct_cs_file_Async()
+    {
+        var step = MakeAmbiguousMatch(new[]
+        {
+            ("/workspace/StepsA.cs", 10, 5),
+            ("/workspace/StepsB.cs", 20, 3),
+        });
+        _matchService.Store(new FeatureBindingMatchSet(
+            FeatureUri.ToString(), ProjectOwner.Unknown, 1, 1, new[] { step }));
+
+        var result = await CreateSut().Handle(
+            RequestAt(FeatureUri, 2, 10), CancellationToken.None);
+
+        var paths = result!
+            .Select(l => l.Location!.Uri.GetFileSystemPath())
+            .ToArray();
+
+        paths.Should().Contain("/workspace/StepsA.cs");
+        paths.Should().Contain("/workspace/StepsB.cs");
+    }
+
+    [Fact]
+    public async Task Handle_ambiguous_step_locations_are_zero_based_Async()
+    {
+        // SourceLocation line 10 col 5 (1-based) → LSP line 9 char 4 (0-based)
+        var step = MakeAmbiguousMatch(new[]
+        {
+            ("/workspace/StepsA.cs", 10, 5),
+            ("/workspace/StepsB.cs", 20, 3),
+        });
+        _matchService.Store(new FeatureBindingMatchSet(
+            FeatureUri.ToString(), ProjectOwner.Unknown, 1, 1, new[] { step }));
+
+        var result = await CreateSut().Handle(
+            RequestAt(FeatureUri, 2, 10), CancellationToken.None);
+
+        var rangeA = result!.First(l => l.Location!.Uri.GetFileSystemPath() == "/workspace/StepsA.cs")
+                            .Location!.Range;
+        rangeA.Start.Line.Should().Be(9);
+        rangeA.Start.Character.Should().Be(4);
+
+        var rangeB = result!.First(l => l.Location!.Uri.GetFileSystemPath() == "/workspace/StepsB.cs")
+                            .Location!.Range;
+        rangeB.Start.Line.Should().Be(19);
+        rangeB.Start.Character.Should().Be(2);
+    }
+
     // ── Undefined step at cursor ──────────────────────────────────────────────
 
     [Fact]

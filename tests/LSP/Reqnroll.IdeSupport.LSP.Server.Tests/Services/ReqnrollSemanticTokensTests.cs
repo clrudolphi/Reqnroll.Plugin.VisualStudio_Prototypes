@@ -38,6 +38,7 @@ public class ReqnrollSemanticTokensTests
     [InlineData(DeveroomTagTypes.StepParameter, ReqnrollClassificationTypeNames.StepParameter)]
     [InlineData(DeveroomTagTypes.ScenarioOutlinePlaceholder, ReqnrollClassificationTypeNames.ScenarioOutlinePlaceholder)]
     [InlineData(DeveroomTagTypes.UndefinedStep, ReqnrollClassificationTypeNames.UndefinedStep)]
+    [InlineData(DeveroomTagTypes.AmbiguousStep, ReqnrollClassificationTypeNames.AmbiguousStep)]
     public void TryGetToken_maps_known_leaf_tags_to_the_matching_reqnroll_token_type(string tagType, string expectedName)
     {
         ReqnrollSemanticTokens.TryGetToken(Tag(tagType), out var typeIndex, out var modBits).Should().BeTrue();

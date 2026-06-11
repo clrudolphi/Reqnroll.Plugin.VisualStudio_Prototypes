@@ -144,6 +144,7 @@ public class Program
                .AddSingleton<StepReferencesHandler>()
                .AddSingleton<FindStepUsagesHandler>()
                .AddSingleton<FeatureDefinitionHandler>()
+               .AddSingleton<GoToStepDefinitionsHandler>()
                .AddSingleton<GoToHooksHandler>();
 
         options.AddHandler<TextDocumentSyncHandler>()
@@ -230,6 +231,14 @@ public class Program
         options.OnRequest<ReferenceParams, FindStepUsagesResponse?>(
             "reqnroll/findStepUsages",
             (request, ct) => serverServices!.GetRequiredService<FindStepUsagesHandler>().HandleAsync(request, ct));
+
+        // F5 — Go to Step Definitions (rich).
+        // Custom message that returns step-type and method-name metadata alongside each location so the
+        // VS extension's picker can show labelled items.  The standard textDocument/definition handler
+        // (FeatureDefinitionHandler) is retained for generic LSP clients.
+        options.OnRequest<TextDocumentPositionParams, GoToStepDefinitionsResponse>(
+            "reqnroll/goToStepDefinitions",
+            (request, ct) => serverServices!.GetRequiredService<GoToStepDefinitionsHandler>().HandleAsync(request, ct));
 
         // F17 — Go to Hooks.
         // Custom message so the server can distinguish "find hooks" from F5 "find step definition"

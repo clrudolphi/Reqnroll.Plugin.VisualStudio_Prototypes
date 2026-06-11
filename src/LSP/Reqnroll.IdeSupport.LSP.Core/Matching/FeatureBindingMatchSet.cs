@@ -27,7 +27,7 @@ public sealed class FeatureBindingMatchSet
     {
         Key = new MatchSetKey(
             documentId ?? throw new ArgumentNullException(nameof(documentId)),
-            owner);
+            owner.IsKnown ? owner : ProjectOwner.Unknown);
         DocumentVersion = documentVersion;
         RegistryVersion = registryVersion;
         Steps           = steps ?? throw new ArgumentNullException(nameof(steps));
@@ -59,9 +59,10 @@ public sealed class FeatureBindingMatchSet
 
     /// <summary>
     /// Builds a match set from the flattened tag collection produced by <c>DeveroomTagParser</c>.
-    /// Each <see cref="DeveroomTagTypes.DefinedStep"/> / <see cref="DeveroomTagTypes.UndefinedStep"/>
-    /// tag carries the step text span as its range and the computed <see cref="MatchResult"/> as its data;
-    /// this method projects those into <see cref="StepBindingMatch"/> entries.
+    /// Each <see cref="DeveroomTagTypes.DefinedStep"/> / <see cref="DeveroomTagTypes.UndefinedStep"/> /
+    /// <see cref="DeveroomTagTypes.AmbiguousStep"/> tag carries the step text span as its range and the
+    /// computed <see cref="MatchResult"/> as its data; this method projects those into
+    /// <see cref="StepBindingMatch"/> entries.
     /// </summary>
     /// <remarks>
     /// A single step can emit both a DefinedStep and an UndefinedStep tag (e.g. a scenario outline
@@ -84,7 +85,7 @@ public sealed class FeatureBindingMatchSet
 
         foreach (var tag in tags)
         {
-            if (tag.Type is not (DeveroomTagTypes.DefinedStep or DeveroomTagTypes.UndefinedStep))
+            if (tag.Type is not (DeveroomTagTypes.DefinedStep or DeveroomTagTypes.UndefinedStep or DeveroomTagTypes.AmbiguousStep))
                 continue;
             if (tag.Data is not MatchResult match)
                 continue;

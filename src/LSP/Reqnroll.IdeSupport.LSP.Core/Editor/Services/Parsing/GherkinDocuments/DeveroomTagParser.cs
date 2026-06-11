@@ -179,7 +179,16 @@ public class DeveroomTagParser : IDeveroomTagParser
                 continue;
 
             var match = bindingRegistry.MatchStep(step, scenarioDefinitionTag);
-            if (match.HasDefined || match.HasAmbiguous)
+            if (match.HasAmbiguous)
+            {
+                // Ambiguous: more than one binding matches — highlighted distinctly so the conflict
+                // is visible in the editor. Parameter tags are omitted because there is no single
+                // canonical binding whose parameters to highlight.
+                stepTag.AddChild(new DeveroomTag(DeveroomTagTypes.AmbiguousStep,
+                    GetTextSpan(fileSnapshot, step.Location, step.Text, offset: step.Keyword.Length),
+                    match));
+            }
+            else if (match.HasDefined)
             {
                 stepTag.AddChild(new DeveroomTag(DeveroomTagTypes.DefinedStep,
                     GetTextSpan(fileSnapshot, step.Location, step.Text, offset: step.Keyword.Length),
@@ -196,7 +205,10 @@ public class DeveroomTagParser : IDeveroomTagParser
                     GetTextSpan(fileSnapshot, step.Location, step.Text, offset: step.Keyword.Length),
                     match));
 
-            if (match.HasErrors)
+            // Emit BindingError only for genuine errors (parameter-count mismatch, scope errors,
+            // etc.).  Ambiguity is already signalled by AmbiguousStep above; adding BindingError
+            // on top would cause the step to re-render as error-coloured instead of ambiguous.
+            if (match.HasErrors && !match.HasAmbiguous)
                 stepTag.AddChild(new DeveroomTag(DeveroomTagTypes.BindingError,
                     GetTextSpan(fileSnapshot, step.Location, step.Text, offset: step.Keyword.Length),
                     match.GetErrorMessage()));

@@ -12,6 +12,7 @@ public static class DeveroomTagTypes
     public const string DefinitionLineKeyword = nameof(DefinitionLineKeyword);
     public const string UndefinedStep = nameof(UndefinedStep);
     public const string DefinedStep = nameof(DefinedStep);
+    public const string AmbiguousStep = nameof(AmbiguousStep);
     public const string StepParameter = nameof(StepParameter);
     public const string ScenarioOutlinePlaceholder = nameof(ScenarioOutlinePlaceholder);
     public const string BindingError = nameof(BindingError);

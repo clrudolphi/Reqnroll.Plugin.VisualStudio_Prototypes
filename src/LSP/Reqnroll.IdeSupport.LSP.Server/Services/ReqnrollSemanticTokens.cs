@@ -43,6 +43,7 @@ public static class ReqnrollSemanticTokens
         StepParameter              = 7,
         ScenarioOutlinePlaceholder = 8,
         UndefinedStep              = 9,
+        AmbiguousStep              = 10,
     }
 
     /// <summary>
@@ -111,6 +112,10 @@ public static class ReqnrollSemanticTokens
 
             case DeveroomTagTypes.UndefinedStep:
                 tokenTypeIndex = (int)T.UndefinedStep;
+                return true;
+
+            case DeveroomTagTypes.AmbiguousStep:
+                tokenTypeIndex = (int)T.AmbiguousStep;
                 return true;
 
             // DefinedStep and BindingError have no Reqnroll classification — they render as

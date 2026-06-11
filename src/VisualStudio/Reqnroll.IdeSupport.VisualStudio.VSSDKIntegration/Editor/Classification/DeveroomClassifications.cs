@@ -40,6 +40,7 @@ internal static class DeveroomClassifications
     public const string DataTableHeader = ReqnrollClassificationTypeNames.DataTableHeader;
 
     public const string UndefinedStep = ReqnrollClassificationTypeNames.UndefinedStep;
+    public const string AmbiguousStep = ReqnrollClassificationTypeNames.AmbiguousStep;
     public const string StepParameter = ReqnrollClassificationTypeNames.StepParameter;
     public const string ScenarioOutlinePlaceholder = ReqnrollClassificationTypeNames.ScenarioOutlinePlaceholder;
 
@@ -163,6 +164,24 @@ internal static class DeveroomClassifications
         public GherkinCommentClassificationFormat()
         {
             DisplayName = "Reqnroll Comment";
+        }
+    }
+
+
+    [Export] [Name(AmbiguousStep)]
+    private static ClassificationTypeDefinition _ambiguousStepClassificationTypeDefinition;
+
+    [Export(typeof(EditorFormatDefinition))]
+    [ClassificationType(ClassificationTypeNames = AmbiguousStep)]
+    [Name(AmbiguousStep)]
+    [UserVisible(true)]
+    [Order(Before = Priority.Default)]
+    internal sealed class GherkinAmbiguousStepClassificationFormat : ClassificationFormatDefinition
+    {
+        public GherkinAmbiguousStepClassificationFormat()
+        {
+            DisplayName = "Reqnroll Ambiguous Step";
+            ForegroundColor = (Color) ColorConverter.ConvertFromString("#FF8C00"); // dark orange
         }
     }
 

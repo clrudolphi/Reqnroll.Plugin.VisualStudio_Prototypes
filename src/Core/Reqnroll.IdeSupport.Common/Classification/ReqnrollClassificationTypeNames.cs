@@ -49,6 +49,13 @@ public static class ReqnrollClassificationTypeNames
     public const string UndefinedStep = "reqnroll.undefined_step";
 
     /// <summary>
+    /// Step text of a step that matches more than one step-definition binding (ambiguous).
+    /// The test would fail at runtime with "Ambiguous step definitions"; highlighted to make
+    /// the conflict visible in the editor.
+    /// </summary>
+    public const string AmbiguousStep = "reqnroll.ambiguous_step";
+
+    /// <summary>
     /// The legend order.  Indices into this array are the <c>tokenTypeIndex</c> emitted in the
     /// LSP semantic-token 5-tuples.  Append-only (see "Legend stability" in the type remarks).
     /// </summary>
@@ -64,5 +71,6 @@ public static class ReqnrollClassificationTypeNames
         StepParameter,               // 7
         ScenarioOutlinePlaceholder,  // 8
         UndefinedStep,               // 9
+        AmbiguousStep,               // 10
     };
 }

@@ -75,6 +75,18 @@ public class BindingMatchServiceTests
     }
 
     [Fact]
+    public void FromTags_captures_an_ambiguous_step_match()
+    {
+        var b1 = GivenBinding("my step", method: "Method1", file: "A.cs");
+        var b2 = GivenBinding("my step", method: "Method2", file: "B.cs");
+        var set = BuildSet(DefinedFeature, RegistryWith(b1, b2));
+
+        set.Steps.Should().ContainSingle();
+        set.Steps[0].IsAmbiguous.Should().BeTrue();
+        set.Ambiguous.Should().ContainSingle();
+    }
+
+    [Fact]
     public void FindAt_returns_the_step_whose_span_contains_the_offset()
     {
         var set  = BuildSet(DefinedFeature, RegistryWith(GivenBinding("my step")));
