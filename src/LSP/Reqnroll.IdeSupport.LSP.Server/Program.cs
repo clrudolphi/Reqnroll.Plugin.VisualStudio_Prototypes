@@ -160,7 +160,8 @@ public class Program
                .AddSingleton<StepCodeLensHandler>()
                .AddSingleton<GherkinCompletionHandler>()
                .AddSingleton<IStepScaffoldService, StepScaffoldService>()
-               .AddSingleton<FeatureCodeActionHandler>();
+               .AddSingleton<FeatureCodeActionHandler>()
+               .AddSingleton<FindUnusedStepDefinitionsHandler>();
 
         options.AddHandler<TextDocumentSyncHandler>()
                .AddHandler<WorkspaceFoldersHandler>()
@@ -270,6 +271,12 @@ public class Program
         options.OnRequest<CodeLensParams, CodeLens[]?>(
             "textDocument/codeLens",
             (request, ct) => serverServices!.GetRequiredService<StepCodeLensHandler>().HandleAsync(request, ct));
+
+        // F15 — Find Unused Step Definitions.
+        // Workspace-wide command; no text-document context required.
+        options.OnRequest<FindUnusedStepDefinitionsParams, FindUnusedStepDefinitionsResponse>(
+            "reqnroll/findUnusedStepDefinitions",
+            (_, ct) => serverServices!.GetRequiredService<FindUnusedStepDefinitionsHandler>().HandleAsync(ct));
 
     }
 }

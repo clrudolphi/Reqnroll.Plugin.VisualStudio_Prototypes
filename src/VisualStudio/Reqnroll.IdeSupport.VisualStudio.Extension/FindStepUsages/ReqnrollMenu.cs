@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Commands;
+using Reqnroll.IdeSupport.VisualStudio.Extension.FindUnusedStepDefinitions;
 
 namespace Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
 
@@ -18,6 +19,7 @@ internal static class ReqnrollMenu
         Children =
         [
             MenuChild.Command<FindStepUsagesCommand>(),
+            MenuChild.Command<FindUnusedStepDefinitionsCommand>(),
         ],
     };
 }

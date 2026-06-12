@@ -85,6 +85,17 @@ public sealed class BindingRegistryProviderRouter : IProjectBindingRegistryLooku
     }
 
     /// <inheritdoc/>
+    public IReadOnlyList<(string ProjectName, ProjectOwner Owner, ProjectBindingRegistry Registry)> GetAllRegistries()
+    {
+        return _entries
+            .Select(kvp => (
+                kvp.Key.ProjectName,
+                new ProjectOwner(kvp.Key.ProjectFullName, kvp.Key.TargetFrameworkMoniker),
+                kvp.Value.Provider.Current))
+            .ToList();
+    }
+
+    /// <inheritdoc/>
     public bool HasBindingAtLocation(DocumentUri csUri, SourceLocation query)
     {
         // Check all owners (not just primary) so linked-file scenarios see every relevant registry.

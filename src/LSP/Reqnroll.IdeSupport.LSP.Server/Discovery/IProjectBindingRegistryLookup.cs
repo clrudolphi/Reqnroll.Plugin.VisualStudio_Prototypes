@@ -1,5 +1,6 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Matching;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Discovery;
 
@@ -38,4 +39,10 @@ public interface IProjectBindingRegistryLookup
     /// "binding with zero matching steps" (return empty).
     /// </summary>
     bool HasBindingAtLocation(DocumentUri csUri, SourceLocation query);
+
+    /// <summary>
+    /// Returns a snapshot of all currently-known (project name, owner, registry) triplets,
+    /// one per discovered project. Used by F15 to enumerate all step definitions workspace-wide.
+    /// </summary>
+    IReadOnlyList<(string ProjectName, ProjectOwner Owner, ProjectBindingRegistry Registry)> GetAllRegistries();
 }

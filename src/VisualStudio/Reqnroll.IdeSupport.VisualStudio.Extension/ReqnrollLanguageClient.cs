@@ -11,6 +11,7 @@ using Nerdbank.Streams;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.VisualStudio.Extension.Classification;
 using Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
+using Reqnroll.IdeSupport.VisualStudio.Extension.FindUnusedStepDefinitions;
 using Reqnroll.IdeSupport.VisualStudio.Extension.GoToDefinition;
 using Reqnroll.IdeSupport.VisualStudio.Extension.GoToHooks;
 using Reqnroll.IdeSupport.VisualStudio.Extension.LspInterception;
@@ -26,6 +27,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
     private readonly TraceSource _traceSource;
     private readonly IDeveroomLogger _fileLogger;
     private readonly FindStepUsagesState _findStepUsagesState;
+    private readonly FindUnusedStepDefinitionsState _findUnusedStepDefinitionsState;
     private readonly GoToHooksState _goToHooksState;
     private readonly GoToDefinitionState _goToDefinitionState;
     private readonly StepCodeLensState _stepCodeLensState;
@@ -40,16 +42,18 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         VisualStudioExtensibility extensibilityObject,
         TraceSource traceSource,
         FindStepUsagesState findStepUsagesState,
+        FindUnusedStepDefinitionsState findUnusedStepDefinitionsState,
         GoToHooksState goToHooksState,
         GoToDefinitionState goToDefinitionState,
         StepCodeLensState stepCodeLensState)
         : base(container, extensibilityObject)
     {
-        _traceSource          = traceSource;
-        _findStepUsagesState  = findStepUsagesState;
-        _goToHooksState       = goToHooksState;
-        _goToDefinitionState  = goToDefinitionState;
-        _stepCodeLensState    = stepCodeLensState;
+        _traceSource                    = traceSource;
+        _findStepUsagesState            = findStepUsagesState;
+        _findUnusedStepDefinitionsState = findUnusedStepDefinitionsState;
+        _goToHooksState                 = goToHooksState;
+        _goToDefinitionState            = goToDefinitionState;
+        _stepCodeLensState              = stepCodeLensState;
         _fileLogger          = new SynchronousFileLogger();
         _traceSource.TraceInformation("ReqnrollLanguageClient: Instance created.");
         _fileLogger.LogInfo(
@@ -197,10 +201,11 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         {
             // GoToHooksService, GoToDefinitionService, and FindStepUsagesService use only
             // LspInterceptingPipe + TraceSource — no COM, safe here.
-            _findStepUsagesState.Service  = new FindStepUsagesService(_interceptingPipe, _traceSource);
-            _goToHooksState.Service       = new GoToHooksService(_interceptingPipe, _traceSource);
-            _goToDefinitionState.Service  = new GoToDefinitionService(_interceptingPipe, _traceSource);
-            _stepCodeLensState.Service    = new StepCodeLensService(_interceptingPipe, _traceSource);
+            _findStepUsagesState.Service            = new FindStepUsagesService(_interceptingPipe, _traceSource);
+            _findUnusedStepDefinitionsState.Service = new FindUnusedStepDefinitionsService(_interceptingPipe, _traceSource);
+            _goToHooksState.Service                 = new GoToHooksService(_interceptingPipe, _traceSource);
+            _goToDefinitionState.Service            = new GoToDefinitionService(_interceptingPipe, _traceSource);
+            _stepCodeLensState.Service              = new StepCodeLensService(_interceptingPipe, _traceSource);
 
             try
             {
@@ -211,7 +216,8 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
                     .SwitchToMainThreadAsync(cancellationToken);
 
                 var serviceProvider = ServiceProvider.GlobalProvider;
-                _findStepUsagesState.Renderer = new FindStepUsagesRenderer(serviceProvider, _traceSource);
+                _findStepUsagesState.Renderer            = new FindStepUsagesRenderer(serviceProvider, _traceSource);
+                _findUnusedStepDefinitionsState.Renderer = new FindUnusedStepDefinitionsRenderer(serviceProvider, _traceSource);
 
                 // F18 — reuse F14 find-usages components for the code-lens click action.
                 _stepCodeLensState.FindUsagesService  = _findStepUsagesState.Service;
@@ -249,9 +255,11 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
             _projectMonitor?.Dispose();
             _projectMonitor = null;
 
-            _findStepUsagesState.Service  = null;
-            _findStepUsagesState.Renderer = null;
-            _goToHooksState.Service       = null;
+            _findStepUsagesState.Service             = null;
+            _findStepUsagesState.Renderer            = null;
+            _findUnusedStepDefinitionsState.Service  = null;
+            _findUnusedStepDefinitionsState.Renderer = null;
+            _goToHooksState.Service                  = null;
             _goToDefinitionState.Service  = null;
             _stepCodeLensState.Service           = null;
             _stepCodeLensState.FindUsagesService  = null;
