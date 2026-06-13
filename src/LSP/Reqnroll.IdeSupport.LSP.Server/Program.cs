@@ -115,8 +115,8 @@ public class Program
         // Register standard LSP handlers
         options.AddStandardHandlers();
 
-        // Register custom Reqnroll protocol handlers and manual routing workarounds
-        options.AddReqnrollCustomProtocolHandlers();
+        // Initialize workspace scopes and custom protocol routing
+        options.InitializeCustomProtocolRouting();
 
         options.OnInitialized((languageServer, request, response, ct) =>
         {

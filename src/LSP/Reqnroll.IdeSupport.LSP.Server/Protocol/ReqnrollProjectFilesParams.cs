@@ -1,3 +1,4 @@
+using MediatR;
 namespace Reqnroll.IdeSupport.LSP.Server.Protocol;
 
 /// <summary>
@@ -6,7 +7,7 @@ namespace Reqnroll.IdeSupport.LSP.Server.Protocol;
 /// the server knows which files each project claims (including linked files, excluded files,
 /// and glob-resolved SDK-style includes).
 /// </summary>
-public sealed class ReqnrollProjectFilesParams
+public sealed class ReqnrollProjectFilesParams : INotification
 {
     /// <summary>Absolute path of the <c>.csproj</c> file.  Part 1 of the index key.</summary>
     public string ProjectFile { get; set; } = string.Empty;

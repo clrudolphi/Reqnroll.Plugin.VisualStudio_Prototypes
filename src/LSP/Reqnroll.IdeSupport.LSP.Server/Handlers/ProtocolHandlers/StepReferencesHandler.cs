@@ -15,9 +15,8 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 /// Handles <c>textDocument/references</c> requests originating from a cursor position in a
 /// <c>.cs</c> binding file (design doc F14 — Find Step Definition Usages).
 /// <para>
-/// Converts the cursor position to a <see cref="SourceLocation"/> (file path + 1-based line),
-/// queries the binding match cache for every feature-file step that resolves to that location,
-/// and returns the results as an array of LSP <see cref="Location"/> objects.
+/// Implements MediatR IRequestHandler to allow automatic routing via AddMediatR,
+/// avoiding the need for manual OnRequest delegate registration and IServiceProvider capture.
 /// </para>
 /// </summary>
 /// <remarks>

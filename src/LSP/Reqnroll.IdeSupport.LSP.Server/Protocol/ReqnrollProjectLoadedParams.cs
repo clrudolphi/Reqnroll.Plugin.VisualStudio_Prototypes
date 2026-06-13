@@ -1,3 +1,4 @@
+using MediatR;
 namespace Reqnroll.IdeSupport.LSP.Server.Protocol;
 
 /// <summary>
@@ -5,7 +6,7 @@ namespace Reqnroll.IdeSupport.LSP.Server.Protocol;
 /// Sent by each IDE glue component when a Reqnroll project is opened or its
 /// build properties change (e.g. after a rebuild).
 /// </summary>
-public sealed class ReqnrollProjectLoadedParams
+public sealed class ReqnrollProjectLoadedParams : INotification
 {
     /// <summary>
     /// Absolute path of the LSP workspace folder this project belongs to.

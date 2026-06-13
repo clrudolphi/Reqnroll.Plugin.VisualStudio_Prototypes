@@ -19,6 +19,8 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 /// <summary>
 /// Handles the custom <c>reqnroll/findStepUsages</c> request (F14 P2b).
 /// <para>
+/// Implements MediatR IRequestHandler to allow automatic routing via AddMediatR,
+/// avoiding the need for manual OnRequest delegate registration and IServiceProvider capture.
 /// Implements the full three-state contract that <c>textDocument/references</c> cannot carry:
 /// <list type="bullet">
 ///   <item>Returns <see langword="null"/> when the caret is not on any step-definition binding

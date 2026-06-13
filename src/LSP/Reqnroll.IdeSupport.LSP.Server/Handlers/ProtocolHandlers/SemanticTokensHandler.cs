@@ -2,6 +2,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.Common.Diagnostics;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
@@ -10,7 +11,7 @@ namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 /// Handles <c>textDocument/semanticTokens/full</c>, <c>textDocument/semanticTokens/full/delta</c>,
 /// and <c>textDocument/semanticTokens/range</c> requests by delegating to <see cref="ISemanticTokenService"/>.
 /// </summary>
-public class SemanticTokensHandler //: SemanticTokensHandlerBase
+public class SemanticTokensHandler
 {
     private readonly ISemanticTokenService _semanticTokenService;
     private readonly IDocumentBufferService _documentBufferService;
