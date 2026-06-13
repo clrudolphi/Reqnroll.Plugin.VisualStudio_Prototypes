@@ -796,8 +796,6 @@ sequenceDiagram
 | Client → Server | `textDocument/onTypeFormatting` | Format as user types (e.g., on `\n`) |
 | Server → Client | `TextEdit[]` response | Set of text edits |
 
-> **Implementation note (Phase 3)**: For the initial release, the server may return a single `TextEdit` replacing the entire document content, rather than a minimal diff. This simplifies implementation at the cost of cursor position preservation; a minimal-diff implementation can follow.
-
 #### Sequence diagram
 
 ```mermaid
@@ -824,6 +822,24 @@ sequenceDiagram
     IDE-->>User: Document reformatted
 ```
 
+#### As-built (branch `f11_documentformatting`)
+
+| Component | Location |
+|-----------|----------|
+| `GherkinDocumentFormatter` | `LSP.Core/Editor/Services/Formatting/GherkinDocumentFormatter.cs` |
+| `GherkinFormatSettings` | `LSP.Core/Editor/Services/Formatting/GherkinFormatSettings.cs` |
+| `DocumentLinesEditBuffer` | `LSP.Core/Editor/Services/Formatting/DocumentLinesEditBuffer.cs` |
+| `GherkinFormattingHandler` | `LSP.Server/Handlers/ProtocolHandlers/GherkinFormattingHandler.cs` |
+| Unit tests | `LSP.Core.Tests/Editor/Services/Formatting/GherkinDocumentFormatterTests.cs` |
+| Spec tests | `LSP.Server.Specs/Features/Editor/DocumentFormatting.feature` |
+
+**Implementation notes:**
+
+- A single `TextEdit` replacing the entire document is returned for `textDocument/formatting` and `textDocument/rangeFormatting`. For range formatting, extra blank lines at the start/end of the range are trimmed.
+- `GherkinDocumentFormatter` re-indents keywords by nesting level (Feature → Scenario → Step) using `\t` characters by default; `GherkinFormatSettings` controls indent char, line endings, and numeric right-alignment in tables.
+- `DocumentLinesEditBuffer` holds the raw line array and is mutated in-place by both document and table formatters; the final joined text is returned as the `newText` of the single edit.
+- The cursor-position `TextEdit` range is captured *before* calling the formatter (which mutates the line array), using `originalEditEndLineLength` to reconstruct valid end-column offsets.
+
 ---
 
 ### F12 · Table Auto-formatting
@@ -832,9 +848,7 @@ sequenceDiagram
 
 #### End-user experience
 
-When the user presses Tab or Enter inside a Gherkin data table (or Examples table), the columns are padded so pipes align. The table can also be aligned via Format Document (F11).
-
-This is implemented as a subset of the formatting service, triggered by `textDocument/onTypeFormatting` on `|` and `\n` characters.
+When the user types `|` or presses Enter inside a Gherkin data table (or Examples table), the columns are padded so pipes align. The table can also be aligned via Format Document (F11). If the table row is missing a final trailing pipe character `|`, one is appended.
 
 #### IDE support matrix
 
@@ -846,7 +860,12 @@ This is implemented as a subset of the formatting service, triggered by `textDoc
 
 #### LSP messages
 
-Same as F11. On-type trigger characters: `|`, `\n`.
+| Direction | Method | Purpose |
+|-----------|--------|---------|
+| Client → Server | `textDocument/onTypeFormatting` | Align table on `\|` or `\n` |
+| Server → Client | `TextEdit[]` response | Column-padding adjustments |
+
+On-type trigger characters: `|` (first), `\n` (more).
 
 #### Sequence diagram
 
@@ -868,6 +887,16 @@ sequenceDiagram
     GOTFH-->>IDE: TextEdit[] response
     IDE-->>User: Table columns aligned
 ```
+
+#### As-built (branch `f11_documentformatting`)
+
+Implemented in the same `GherkinFormattingHandler` as F11. Key details:
+
+- **Trigger characters**: `|` (first), `\n` (more). `\t` was evaluated but VS 2022 routes Tab to the completion handler rather than `onTypeFormatting`, so it is omitted.
+- **Table detection**: `FindTableLineRange` scans up/down from cursor for lines whose `TrimStart()` begins with `|`. `FindTableAtLine` locates the Gherkin AST node (DataTable or Examples table) at that position for the formatter.
+- **`\n` trigger cursor handling**: When Enter is pressed, the cursor is on the new empty line below the last table row. `editEnd` is extended to `cursorLine` and the `newText` includes a trailing line-ending; the edit range end is `(cursorLine, 0)`. This is the `cursorBelowTable` pattern.
+- **Range end column**: `originalEditEndLineLength` is captured *before* calling `FormatTable` (which mutates the line array) so the range end column references the original document position.
+- **VS 2022 interaction**: VS has a built-in Gherkin language service that auto-inserts ` ` after `|` in table rows and routes `|`, ` `, `\r`, `\t` to its completion handler. When `textDocument/completion` for these triggers returns `[]`, VS reverts the typed character from the document. To prevent this, `GherkinCompletionHandler.HandleKeyword` checks `_clientIde.IsVisualStudio` (via the injected `ClientIdeContext`) and returns a single `| ` (cell separator) completion item with a zero-length insert range when the line starts with `|`. For VSCode/Rider (non-VS clients), an empty `CompletionList` is returned — the correct LSP response. VS-specific behaviour is covered by `KeywordCompletionVisualStudio.feature`; general behaviour by `KeywordCompletion.feature`. The on-type formatting edits are sent correctly by the server; VS's internal document-change pipeline may apply them with a delay or override them via its auto-insert mechanism.
 
 ---
 

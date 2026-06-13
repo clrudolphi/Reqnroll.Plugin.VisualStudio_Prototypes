@@ -55,6 +55,34 @@ Scenario: Completion at StepLine returns Given / When / Then keywords
     And the completions include a keyword label "When "
     And the completions include a keyword label "Then "
 
+# ── Table row: keyword completions suppressed ────────────────────────────────
+
+Scenario: Completion inside a table row returns no items for non-VS clients
+    When the feature file "TableRow.feature" is opened with
+        """
+        Feature: Calculator
+        Scenario Outline: add
+            Given the number is <n>
+            Examples:
+                | n |
+                |4
+        """
+    And completions are requested at line 5 column 2 in "TableRow.feature"
+    Then no completions are returned
+
+Scenario: Completion inside a table row does not include keyword completions
+    When the feature file "TableRow.feature" is opened with
+        """
+        Feature: Calculator
+        Scenario Outline: add
+            Given the number is <n>
+            Examples:
+                | n |
+                |4
+        """
+    And completions are requested at line 5 column 2 in "TableRow.feature"
+    Then the completions do not include a label "@tag1 "
+
 # ── Non-.feature file ─────────────────────────────────────────────────────────
 
 Scenario: Completion request on a non-feature file returns no items

@@ -33,6 +33,7 @@ public sealed class GherkinCompletionHandler : ICompletionHandler
     private readonly IDocumentBufferService        _bufferService;
     private readonly ILspWorkspaceScopeManager     _scopeManager;
     private readonly IProjectBindingRegistryLookup _registryLookup;
+    private readonly ClientIdeContext              _clientIde;
     private readonly IDeveroomLogger               _logger;
 
     public GherkinCompletionHandler(
@@ -43,6 +44,7 @@ public sealed class GherkinCompletionHandler : ICompletionHandler
         IDocumentBufferService        bufferService,
         ILspWorkspaceScopeManager     scopeManager,
         IProjectBindingRegistryLookup registryLookup,
+        ClientIdeContext              clientIde,
         IDeveroomLogger               logger)
     {
         _contextResolver   = contextResolver;
@@ -52,6 +54,7 @@ public sealed class GherkinCompletionHandler : ICompletionHandler
         _bufferService     = bufferService;
         _scopeManager      = scopeManager;
         _registryLookup    = registryLookup;
+        _clientIde         = clientIde;
         _logger            = logger;
     }
 
@@ -95,7 +98,7 @@ public sealed class GherkinCompletionHandler : ICompletionHandler
         return ctx switch
         {
             StepCompletionContext    s => Task.FromResult(HandleStep(s,    uri, cursorLine, snapshot)),
-            KeywordCompletionContext k => Task.FromResult(HandleKeyword(k, cursorLine, snapshot)),
+            KeywordCompletionContext k => Task.FromResult(HandleKeyword(k, cursorLine, cursorChar, snapshot)),
             _                         => Task.FromResult(new CompletionList())
         };
     }
@@ -140,14 +143,47 @@ public sealed class GherkinCompletionHandler : ICompletionHandler
     private CompletionList HandleKeyword(
         KeywordCompletionContext k,
         int                     cursorLine,
+        int                     cursorChar,
         IGherkinTextSnapshot    snapshot)
     {
+        // Replacement range: first non-whitespace → end of current word + trailing whitespace
+        var lineText = snapshot.GetLineFromLineNumber(cursorLine).GetText();
+
+        // A partial table row like "|4" causes the Gherkin AST to fall through to keyword
+        // suggestions (including @tags, block keywords), which mangle the row when Tab accepts
+        // the top completion. Suppress keyword completions for table rows entirely.
+        if (lineText.TrimStart().StartsWith("|", StringComparison.Ordinal))
+        {
+            _logger.LogVerbose("GherkinCompletionHandler: table row — suppressing keyword completions");
+
+            if (_clientIde.IsVisualStudio)
+            {
+                // VS 2022 treats an empty CompletionList for a trigger-character request as
+                // "reject and revert the typed character" — returning [] would delete the '|'
+                // from the document. Offer a no-op cell-separator item instead.
+                var insertPos = new Position(cursorLine, cursorChar);
+                return new CompletionList(new[]
+                {
+                    new CompletionItem
+                    {
+                        Label    = "| ",
+                        Detail   = "Table cell separator",
+                        Kind     = (CompletionItemKind)(int)CompletionEntryKind.Keyword,
+                        TextEdit = new TextEditOrInsertReplaceEdit(new TextEdit
+                        {
+                            Range   = new LspRange(insertPos, insertPos),
+                            NewText = "| "
+                        })
+                    }
+                });
+            }
+
+            return new CompletionList();
+        }
+
         var kwResult = k.ExpectedTokens.Length > 0
             ? _completionService.GetKeywordCompletions(k.ExpectedTokens, k.Dialect)
             : _completionService.GetDefaultKeywordCompletions(k.Dialect);
-
-        // Replacement range: first non-whitespace → end of current word + trailing whitespace
-        var lineText = snapshot.GetLineFromLineNumber(cursorLine).GetText();
         var kwStart  = 0;
         while (kwStart < lineText.Length && char.IsWhiteSpace(lineText[kwStart]))
             kwStart++;

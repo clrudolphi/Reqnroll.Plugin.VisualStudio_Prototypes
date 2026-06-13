@@ -161,14 +161,16 @@ public class Program
                .AddSingleton<GherkinCompletionHandler>()
                .AddSingleton<IStepScaffoldService, StepScaffoldService>()
                .AddSingleton<FeatureCodeActionHandler>()
-               .AddSingleton<FindUnusedStepDefinitionsHandler>();
+               .AddSingleton<FindUnusedStepDefinitionsHandler>()
+               .AddSingleton<GherkinFormattingHandler>();
 
         options.AddHandler<TextDocumentSyncHandler>()
                .AddHandler<WorkspaceFoldersHandler>()
                .AddHandler<WatchedFilesHandler>()
                .AddHandler<FeatureDefinitionHandler>()
                .AddHandler<GherkinCompletionHandler>()
-               .AddHandler<FeatureCodeActionHandler>();
+               .AddHandler<FeatureCodeActionHandler>()
+               .AddHandler<GherkinFormattingHandler>();
 
         options.OnStarted((languageServer, ct) =>
         {

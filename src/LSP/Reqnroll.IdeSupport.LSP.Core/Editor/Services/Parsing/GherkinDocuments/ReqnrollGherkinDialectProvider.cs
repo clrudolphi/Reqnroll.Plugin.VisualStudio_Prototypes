@@ -1,6 +1,6 @@
 namespace Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
-internal class ReqnrollGherkinDialectProvider : GherkinDialectProvider
+public class ReqnrollGherkinDialectProvider : GherkinDialectProvider
 {
     public ReqnrollGherkinDialectProvider(string defaultLanguage) : base(defaultLanguage)
     {

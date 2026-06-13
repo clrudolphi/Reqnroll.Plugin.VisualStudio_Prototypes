@@ -136,6 +136,54 @@ public static class LspClientExtensions
             .Returning<CodeLens[]?>(ct);
 
     /// <summary>
+    /// Sends a <c>textDocument/formatting</c> request (F11 — Document Auto-formatting).
+    /// </summary>
+    public static Task<TextEdit[]?> RequestFormattingAsync(
+        this ILanguageClient client, DocumentUri uri,
+        int tabSize = 4, bool insertSpaces = true, CancellationToken ct = default)
+        => client.SendRequest("textDocument/formatting",
+                new DocumentFormattingParams
+                {
+                    TextDocument = new TextDocumentIdentifier { Uri = uri },
+                    Options = new FormattingOptions { TabSize = tabSize, InsertSpaces = insertSpaces }
+                })
+            .Returning<TextEdit[]?>(ct);
+
+    /// <summary>
+    /// Sends a <c>textDocument/rangeFormatting</c> request (F11 — Document Auto-formatting).
+    /// </summary>
+    public static Task<TextEdit[]?> RequestRangeFormattingAsync(
+        this ILanguageClient client, DocumentUri uri,
+        int startLine, int endLine,
+        int tabSize = 4, bool insertSpaces = true, CancellationToken ct = default)
+        => client.SendRequest("textDocument/rangeFormatting",
+                new DocumentRangeFormattingParams
+                {
+                    TextDocument = new TextDocumentIdentifier { Uri = uri },
+                    Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                        new Position(startLine, 0), new Position(endLine, 0)),
+                    Options = new FormattingOptions { TabSize = tabSize, InsertSpaces = insertSpaces }
+                })
+            .Returning<TextEdit[]?>(ct);
+
+    /// <summary>
+    /// Sends a <c>textDocument/onTypeFormatting</c> request (F12 — Table Auto-formatting).
+    /// </summary>
+    public static Task<TextEdit[]?> RequestOnTypeFormattingAsync(
+        this ILanguageClient client, DocumentUri uri,
+        int line, int character, string triggerCharacter,
+        int tabSize = 4, bool insertSpaces = true, CancellationToken ct = default)
+        => client.SendRequest("textDocument/onTypeFormatting",
+                new DocumentOnTypeFormattingParams
+                {
+                    TextDocument = new TextDocumentIdentifier { Uri = uri },
+                    Position     = new Position(line, character),
+                    Character    = triggerCharacter,
+                    Options      = new FormattingOptions { TabSize = tabSize, InsertSpaces = insertSpaces }
+                })
+            .Returning<TextEdit[]?>(ct);
+
+    /// <summary>
     /// Sends a <c>textDocument/completion</c> request (F7 keyword completion, F8 step completion).
     /// </summary>
     public static Task<CompletionList?> RequestCompletionAsync(
