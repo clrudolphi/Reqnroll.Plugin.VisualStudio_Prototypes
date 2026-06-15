@@ -164,7 +164,6 @@ public sealed class StepRenameHandler
 
         var line   = request.Position.Line + 1;
         var column = request.Position.Character + 1;
-        var bindingLocation = new SourceLocation(path, line, column);
 
         var registry = _registryLookup.GetRegistryForUri(uri);
         if (registry == ProjectBindingRegistry.Invalid)
@@ -173,12 +172,45 @@ public sealed class StepRenameHandler
             return null;
         }
 
-        var binding = FindBindingAtLocation(registry, bindingLocation);
+        // Check for a pending rename session (set by reqnroll/selectRenameTarget).
+        // This handles the multi-attribute case where the cursor is not on a specific
+        // attribute string — the picker pre-selected which binding to rename.
+        ProjectStepDefinitionBinding? binding = null;
+        int? pendingAttributeIndex = null;
+
+        // Use version from request or fallback to 0
+        var documentVersion = 0;
+        if (_sessionManager.TryConsume(uri.ToString(), documentVersion, out var sessionAttrIndex))
+        {
+            pendingAttributeIndex = sessionAttrIndex;
+            _logger.LogVerbose($"StepRenameHandler: consumed pending session, attributeIndex={sessionAttrIndex}");
+        }
+
+        if (pendingAttributeIndex.HasValue)
+        {
+            // Find the binding by enumerating bindings at the method location
+            var bindingsAtLocation = registry.StepDefinitions
+                .Where(b => b.Implementation.SourceLocation != null &&
+                            string.Equals(b.Implementation.SourceLocation.SourceFile, path, StringComparison.OrdinalIgnoreCase) &&
+                            Math.Abs(b.Implementation.SourceLocation.SourceFileLine - line) <= 5)
+                .ToList();
+
+            if (pendingAttributeIndex.Value >= 0 && pendingAttributeIndex.Value < bindingsAtLocation.Count)
+            {
+                binding = bindingsAtLocation[pendingAttributeIndex.Value];
+                _logger.LogVerbose($"StepRenameHandler: resolved binding via session: '{binding?.Expression}'");
+            }
+        }
+
+        // Fall back to position-based resolution (single-binding case)
+        binding ??= FindBindingAtLocation(registry, new SourceLocation(path, line, column));
         if (binding == null)
         {
             _logger.LogVerbose("StepRenameHandler: no binding at cursor position");
             return null;
         }
+
+        var bindingLocation = new SourceLocation(path, line, column);
 
         // ── 2. Validate new name ───────────────────────────────────────────────
         var expression = binding.Expression ?? string.Empty;
