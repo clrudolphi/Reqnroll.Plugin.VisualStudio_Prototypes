@@ -88,17 +88,9 @@ internal sealed class RenameStepCommand : Command
             var targets = await service.GetRenameTargetsAsync(fileUri, lineNum, charNum, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (targets is null)
+            if (targets is null || targets.Targets.Count == 0)
             {
                 _fileLogger.LogInfo("RenameStepCommand: no renameable targets at cursor position.");
-                VsUtils.ShowStatusBarMessage("Reqnroll: No step definition found to rename at this position.");
-                return;
-            }
-
-            var targetsArray = targets["targets"] as JArray;
-            if (targetsArray is null || targetsArray.Count == 0)
-            {
-                _fileLogger.LogInfo("RenameStepCommand: empty targets array.");
                 VsUtils.ShowStatusBarMessage("Reqnroll: No step definition found to rename at this position.");
                 return;
             }
@@ -108,23 +100,20 @@ internal sealed class RenameStepCommand : Command
             string currentLabel;
             string currentExpression;
 
-            if (targetsArray.Count == 1)
+            if (targets.Targets.Count == 1)
             {
-                selectedAttributeIndex = targetsArray[0]["attributeIndex"]?.Value<int>() ?? 0;
-                currentLabel = targetsArray[0]["label"]?.Value<string>() ?? "";
-                currentExpression = targetsArray[0]["expression"]?.Value<string>() ?? "";
+                var item = targets.Targets[0];
+                selectedAttributeIndex = item.AttributeIndex;
+                currentLabel = item.Label;
+                currentExpression = item.Expression;
                 _fileLogger.LogInfo($"RenameStepCommand: single target, attributeIndex={selectedAttributeIndex}, label='{currentLabel}'.");
             }
             else
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-                var pickerTargets = targetsArray
-                    .Select((t, i) =>
-                    {
-                        var label = t["label"]?.Value<string>() ?? $"Step definition {i + 1}";
-                        return new NavigationTarget(label, textView.Uri.LocalPath, 0, 0);
-                    })
+                var pickerTargets = targets.Targets
+                    .Select(t => new NavigationTarget(t.Label, textView.Uri.LocalPath, 0, 0))
                     .ToList();
 
                 var dialog = new NavigationPickerDialog("Choose step definition to rename", pickerTargets);
@@ -134,9 +123,10 @@ internal sealed class RenameStepCommand : Command
                     return;
                 }
 
-                selectedAttributeIndex = targetsArray[dialog.SelectedIndex]["attributeIndex"]?.Value<int>() ?? 0;
-                currentLabel = targetsArray[dialog.SelectedIndex]["label"]?.Value<string>() ?? "";
-                currentExpression = targetsArray[dialog.SelectedIndex]["expression"]?.Value<string>() ?? "";
+                var chosen = targets.Targets[dialog.SelectedIndex];
+                selectedAttributeIndex = chosen.AttributeIndex;
+                currentLabel = chosen.Label;
+                currentExpression = chosen.Expression;
                 _fileLogger.LogInfo($"RenameStepCommand: user selected target index={dialog.SelectedIndex}, attributeIndex={selectedAttributeIndex}.");
             }
 

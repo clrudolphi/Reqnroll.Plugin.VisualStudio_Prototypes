@@ -30,9 +30,10 @@ internal sealed class RenameStepService
 
     /// <summary>
     /// Queries the server for renameable binding targets at the given position.
-    /// Returns a JObject with a "targets" array, or null if no targets.
+    /// Returns a <see cref="RenameTargetsResult"/> with the available targets,
+    /// or null if no renameable binding was found at the cursor position.
     /// </summary>
-    public async Task<JObject?> GetRenameTargetsAsync(
+    public async Task<RenameTargetsResult?> GetRenameTargetsAsync(
         string fileUri, int line0, int char0,
         CancellationToken cancellationToken)
     {
@@ -45,11 +46,38 @@ internal sealed class RenameStepService
             .SendRequestToServerAsync(RenameTargetsMethod, paramsJson, cancellationToken)
             .ConfigureAwait(false);
 
-        if (result is JObject obj && obj["targets"] is JArray arr && arr.Count > 0)
+        if (result is JObject obj)
         {
-            _traceSource.TraceInformation(
-                "RenameStepService: {0} target(s) returned", arr.Count);
-            return obj;
+            try
+            {
+                var targets = obj["targets"] as JArray;
+                if (targets is null || targets.Count == 0)
+                {
+                    _traceSource.TraceInformation("RenameStepService: no targets returned");
+                    return null;
+                }
+
+                var response = new RenameTargetsResult();
+                foreach (var t in targets)
+                {
+                    if (t is not JObject item) continue;
+                    response.Targets.Add(new RenameTargetItem
+                    {
+                        Label = item["label"]?.Value<string>() ?? "",
+                        Expression = item["expression"]?.Value<string>() ?? "",
+                        AttributeIndex = item["attributeIndex"]?.Value<int>() ?? 0
+                    });
+                }
+
+                _traceSource.TraceInformation(
+                    "RenameStepService: {0} target(s) returned", response.Targets.Count);
+                return response;
+            }
+            catch (System.Exception ex)
+            {
+                _traceSource.TraceEvent(TraceEventType.Warning, 0,
+                    "RenameStepService: failed to parse targets: {0}", ex.Message);
+            }
         }
 
         _traceSource.TraceInformation("RenameStepService: no targets returned");
