@@ -332,4 +332,344 @@ public class StepRenameHandlerTests
         featureEdits[0].NewText.Should().Be("the second no is <secondNumber>",
             "the outline placeholder is preserved; the binding's {int} token must not leak into the feature");
     }
+
+    // ── Feature-file renaming tests ─────────────────────────────────────────────
+    // These cover the three new code paths: HandleRenameTargetsFromFeatureAsync,
+    // FindBindingsAtFeatureStep, and the .feature branch of HandleRenameAsync.
+
+    private static FeatureBindingMatchSet MakeFeatureMatchSet(
+        string featureUri, ProjectStepDefinitionBinding binding,
+        string scenarioBlock, string stepText, int stepLine, int stepChar)
+    {
+        var text = $"Feature: F\nScenario: S\n\t{scenarioBlock} {stepText}\n";
+        var snapshot = new LspTextSnapshot(featureUri, 1, text);
+        var stepPrefix = $"\t{scenarioBlock} ";
+        var startOffset = text.IndexOf(stepPrefix + stepText) + stepPrefix.Length;
+        var range = GherkinRange.FromPoint(snapshot, startOffset: startOffset, length: stepText.Length);
+        var match = new StepBindingMatch(
+            featureUri,
+            range,
+            MatchResult.CreateMultiMatch(new[]
+            {
+                MatchResultItem.CreateMatch(binding, ParameterMatch.NotMatch)
+            }));
+
+        return new FeatureBindingMatchSet(
+            featureUri,
+            new ProjectOwner("/workspace/MyProject.csproj", ".NETCoreApp,Version=v8.0"),
+            1, 1,
+            new[] { match });
+    }
+
+    private static LspReqnrollProject MakeTestProject() =>
+        new(
+            new ReqnrollProjectLoadedParams
+            {
+                ProjectFile = "/workspace/MyProject.csproj",
+                ProjectFolder = "/workspace",
+                TargetFrameworkMoniker = ".NETCoreApp,Version=v8.0"
+            },
+            Substitute.For<Reqnroll.IdeSupport.Common.IIdeScope>());
+
+    [Fact]
+    public async Task RenameTargets_from_feature_returns_matched_binding()
+    {
+        var featureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
+        var binding = MakeBinding(
+            ScenarioBlock.Then,
+            new Regex("^to be or not to be$"),
+            specifiedExpression: "to be or not to be",
+            line: 8, column: 9,
+            method: "Steps.ThenToBeOrNotToBe()");
+        _registryLookup.GetRegistryForUri(Arg.Any<DocumentUri>())
+                       .Returns(ProjectBindingRegistry.FromBindings(new[] { binding }));
+
+        var project = MakeTestProject();
+        _scopeManager.ResolveOwners(featureUri).Returns(new[] { project });
+
+        var matchSet = MakeFeatureMatchSet(
+            featureUri.ToString(), binding,
+            "Then", "to be or not to be", stepLine: 2, stepChar: 5);
+        _matchService.TryGet(Arg.Any<MatchSetKey>(), out Arg.Any<FeatureBindingMatchSet>())
+            .Returns(ci =>
+            {
+                ci[1] = matchSet;
+                return true;
+            });
+
+        var response = await CreateSut().HandleRenameTargetsAsync(
+            new TextDocumentPositionParams
+            {
+                TextDocument = new TextDocumentIdentifier { Uri = featureUri },
+                Position = new Position(2, 14)
+            },
+            CancellationToken.None);
+
+        response.Should().NotBeNull();
+        var target = response!.Targets.Should().ContainSingle().Subject;
+        target.Expression.Should().Be("to be or not to be");
+        target.Label.Should().Be("Then to be or not to be");
+    }
+
+    [Fact]
+    public async Task RenameTargets_from_feature_no_match_returns_empty_response()
+    {
+        var featureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
+        _scopeManager.ResolveOwners(featureUri).Returns(Array.Empty<LspReqnrollProject>());
+
+        var response = await CreateSut().HandleRenameTargetsAsync(
+            new TextDocumentPositionParams
+            {
+                TextDocument = new TextDocumentIdentifier { Uri = featureUri },
+                Position = new Position(2, 14)
+            },
+            CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response!.Targets.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Rename_from_feature_edits_both_feature_text_and_csharp_attribute()
+    {
+        var featureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
+        var csUri = DocumentUri.FromFileSystemPath("/workspace/Steps.cs");
+
+        const string csText =
+            "using Reqnroll;\n" +
+            "namespace N\n" +
+            "{\n" +
+            "    [Binding]\n" +
+            "    public class Steps\n" +
+            "    {\n" +
+            "        [Then(\"to be or not to be\")]\n" +
+            "        public void ThenToBeOrNotToBe() { }\n" +
+            "    }\n" +
+            "}\n";
+
+        SetupBuffers((csUri, csText));
+
+        var binding = MakeBinding(
+            ScenarioBlock.Then,
+            new Regex("^to be or not to be$"),
+            specifiedExpression: "to be or not to be",
+            line: 8, column: 9,
+            method: "Steps.ThenToBeOrNotToBe()");
+        _registryLookup.GetRegistryForUri(Arg.Any<DocumentUri>())
+                       .Returns(ProjectBindingRegistry.FromBindings(new[] { binding }));
+
+        var project = MakeTestProject();
+        _scopeManager.ResolveOwners(featureUri).Returns(new[] { project });
+
+        var matchSet = MakeFeatureMatchSet(
+            featureUri.ToString(), binding,
+            "Then", "to be or not to be", stepLine: 2, stepChar: 5);
+        _matchService.TryGet(Arg.Any<MatchSetKey>(), out Arg.Any<FeatureBindingMatchSet>())
+            .Returns(ci =>
+            {
+                ci[1] = matchSet;
+                return true;
+            });
+
+        const string featureText = "Feature: F\nScenario: S\n\tThen to be or not to be\n";
+        var snapshot = new LspTextSnapshot(featureUri.ToString(), 1, featureText);
+        const string stepText = "to be or not to be";
+        var stepOffset = featureText.IndexOf("\tThen " + stepText) + "\tThen ".Length;
+        var usageMatch = new StepBindingMatch(
+            featureUri.ToString(),
+            GherkinRange.FromPoint(snapshot, startOffset: stepOffset, length: stepText.Length),
+            MatchResult.CreateMultiMatch(new[]
+            {
+                MatchResultItem.CreateMatch(binding, ParameterMatch.NotMatch)
+            }));
+        _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
+                     .Returns(new[] { usageMatch });
+
+        var sut = CreateSut();
+        await sut.HandleSelectRenameTargetAsync(
+            new SelectRenameTargetParams { Uri = featureUri.ToString(), Version = 0, AttributeIndex = 0 },
+            CancellationToken.None);
+
+        var result = await sut.HandleRenameAsync(
+            new RenameParams
+            {
+                TextDocument = new TextDocumentIdentifier { Uri = featureUri },
+                Position = new Position(2, 14),
+                NewName = "to be and not to be"
+            },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Changes!.Should().ContainKey(featureUri);
+        result.Changes.Should().ContainKey(csUri);
+
+        var featureEdit = result.Changes[featureUri].ToList();
+        featureEdit.Should().ContainSingle();
+        featureEdit[0].NewText.Should().Be("to be and not to be");
+
+        var csEdit = result.Changes[csUri].ToList();
+        csEdit.Should().ContainSingle();
+        csEdit[0].NewText.Should().Be("\"to be and not to be\"");
+    }
+
+    [Fact]
+    public async Task Rename_from_feature_without_session_resolves_binding_via_match_cache()
+    {
+        var featureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
+        var csUri = DocumentUri.FromFileSystemPath("/workspace/Steps.cs");
+
+        const string csText =
+            "using Reqnroll;\n" +
+            "namespace N\n" +
+            "{\n" +
+            "    [Binding]\n" +
+            "    public class Steps\n" +
+            "    {\n" +
+            "        [Given(\"I press add\")]\n" +
+            "        public void GivenIPressAdd() { }\n" +
+            "    }\n" +
+            "}\n";
+
+        SetupBuffers((csUri, csText));
+
+        var binding = MakeBinding(
+            ScenarioBlock.Given,
+            new Regex("^I press add$"),
+            specifiedExpression: "I press add",
+            line: 8, column: 9,
+            method: "Steps.GivenIPressAdd()");
+        _registryLookup.GetRegistryForUri(Arg.Any<DocumentUri>())
+                       .Returns(ProjectBindingRegistry.FromBindings(new[] { binding }));
+
+        var project = MakeTestProject();
+        _scopeManager.ResolveOwners(featureUri).Returns(new[] { project });
+
+        var matchSet = MakeFeatureMatchSet(
+            featureUri.ToString(), binding,
+            "Given", "I press add", stepLine: 2, stepChar: 5);
+        _matchService.TryGet(Arg.Any<MatchSetKey>(), out Arg.Any<FeatureBindingMatchSet>())
+            .Returns(ci =>
+            {
+                ci[1] = matchSet;
+                return true;
+            });
+
+        const string featureText = "Feature: F\nScenario: S\n\tGiven I press add\n";
+        var snapshot = new LspTextSnapshot(featureUri.ToString(), 1, featureText);
+        const string stepText = "I press add";
+        var stepOffset = featureText.IndexOf("\tGiven " + stepText) + "\tGiven ".Length;
+        var usageMatch = new StepBindingMatch(
+            featureUri.ToString(),
+            GherkinRange.FromPoint(snapshot, startOffset: stepOffset, length: stepText.Length),
+            MatchResult.CreateMultiMatch(new[]
+            {
+                MatchResultItem.CreateMatch(binding, ParameterMatch.NotMatch)
+            }));
+        _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
+                     .Returns(new[] { usageMatch });
+
+        var sut = CreateSut();
+
+        var result = await sut.HandleRenameAsync(
+            new RenameParams
+            {
+                TextDocument = new TextDocumentIdentifier { Uri = featureUri },
+                Position = new Position(2, 10),
+                NewName = "I choose add"
+            },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Changes!.Should().ContainKey(featureUri);
+        result.Changes.Should().ContainKey(csUri);
+    }
+
+    [Fact]
+    public async Task FindAttributeLiteralAsync_redirects_from_feature_to_csharp_source()
+    {
+        var featureUri = DocumentUri.FromFileSystemPath("/workspace/test.feature");
+        var csUri = DocumentUri.FromFileSystemPath("/workspace/Steps.cs");
+        var csPath = csUri.GetFileSystemPath();
+
+        const string csText =
+            "using Reqnroll;\n" +
+            "namespace N\n" +
+            "{\n" +
+            "    [Binding]\n" +
+            "    public class Steps\n" +
+            "    {\n" +
+            "        [When(\"something happens\")]\n" +
+            "        public void WhenSomethingHappens() { }\n" +
+            "    }\n" +
+            "}\n";
+
+        SetupBuffers((csUri, csText));
+
+        var binding = MakeBinding(
+            ScenarioBlock.When,
+            new Regex("^something happens$"),
+            specifiedExpression: "something happens",
+            line: 8, column: 9,
+            method: "Steps.WhenSomethingHappens()");
+
+        binding = new ProjectStepDefinitionBinding(
+            binding.StepDefinitionType,
+            binding.Regex,
+            binding.Scope,
+            new ProjectBindingImplementation(
+                "Steps.WhenSomethingHappens()",
+                null,
+                new SourceLocation(csPath, 8, 9)),
+            binding.Expression);
+
+        _registryLookup.GetRegistryForUri(Arg.Any<DocumentUri>())
+                       .Returns(ProjectBindingRegistry.FromBindings(new[] { binding }));
+
+        var project = MakeTestProject();
+        _scopeManager.ResolveOwners(featureUri).Returns(new[] { project });
+
+        var matchSet = MakeFeatureMatchSet(
+            featureUri.ToString(), binding,
+            "When", "something happens", stepLine: 2, stepChar: 5);
+        _matchService.TryGet(Arg.Any<MatchSetKey>(), out Arg.Any<FeatureBindingMatchSet>())
+            .Returns(ci =>
+            {
+                ci[1] = matchSet;
+                return true;
+            });
+
+        const string whenFeatureText = "Feature: F\nScenario: S\n\tWhen something happens\n";
+        const string whenStepText = "something happens";
+        var whenStepOffset = whenFeatureText.IndexOf("\tWhen " + whenStepText) + "\tWhen ".Length;
+        var usageMatch = new StepBindingMatch(
+            featureUri.ToString(),
+            GherkinRange.FromPoint(
+                new LspTextSnapshot(featureUri.ToString(), 1, whenFeatureText),
+                startOffset: whenStepOffset, length: whenStepText.Length),
+            MatchResult.CreateMultiMatch(new[] { MatchResultItem.CreateMatch(binding, ParameterMatch.NotMatch) }));
+        _matchService.FindUsages(Arg.Any<SourceLocation>(), Arg.Any<IReadOnlyCollection<ProjectOwner>>())
+                     .Returns(new[] { usageMatch });
+
+        var sut = CreateSut();
+        await sut.HandleSelectRenameTargetAsync(
+            new SelectRenameTargetParams { Uri = featureUri.ToString(), Version = 0, AttributeIndex = 0 },
+            CancellationToken.None);
+
+        var result = await sut.HandleRenameAsync(
+            new RenameParams
+            {
+                TextDocument = new TextDocumentIdentifier { Uri = featureUri },
+                Position = new Position(2, 10),
+                NewName = "something changed"
+            },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Changes!.Should().ContainKey(csUri);
+
+        var csEdit = result.Changes[csUri].ToList();
+        csEdit.Should().ContainSingle();
+        csEdit[0].NewText.Should().Be("\"something changed\"");
+        csEdit[0].Range.Start.Line.Should().Be(6, "the [When] attribute literal is on 0-based line 6");
+    }
 }

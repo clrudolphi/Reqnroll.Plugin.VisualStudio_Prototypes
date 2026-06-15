@@ -320,6 +320,20 @@ public sealed class StepRenameHandler
         if (changes.Count == 0)
             return null;
 
+        // Invalidate the match cache for feature files that were modified by the rename.
+        // When a feature file is closed at rename time, no didChange notification fires,
+        // so the server's in-memory match cache would otherwise retain the old step text
+        // until the file is re-opened and re-parsed.
+        foreach (var changedUri in changes.Keys)
+        {
+            var changedPath = changedUri.GetFileSystemPath();
+            if (!string.IsNullOrEmpty(changedPath) && changedPath.EndsWith(".feature", StringComparison.OrdinalIgnoreCase))
+            {
+                _matchService.InvalidateAllForDocument(changedUri.ToString());
+                _logger.LogVerbose($"StepRenameHandler: invalidated match cache for '{changedUri}'");
+            }
+        }
+
         return new WorkspaceEdit
         {
             Changes = changes.ToDictionary(kvp => kvp.Key, kvp => (IEnumerable<TextEdit>)kvp.Value)

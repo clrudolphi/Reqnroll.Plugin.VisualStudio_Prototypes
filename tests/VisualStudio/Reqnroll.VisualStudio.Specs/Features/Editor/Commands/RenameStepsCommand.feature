@@ -3,7 +3,7 @@ Feature: RenameStepsCommand
 
 Rule: Simple parameterless step definition can be renamed
 
-Scenario: A simple step with a sigle usage is renamed from step definition (code side)
+Scenario: A simple step with a single usage is renamed from step definition (code side)
 	Given there is a Reqnroll project scope
 	And the following feature file "Addition.feature"
 		"""

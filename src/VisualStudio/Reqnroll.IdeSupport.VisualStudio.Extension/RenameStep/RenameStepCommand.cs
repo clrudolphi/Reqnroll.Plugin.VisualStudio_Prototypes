@@ -329,6 +329,27 @@ internal sealed class RenameStepCommand : Command
             System.IO.File.WriteAllText(localPath, newContent);
 
             _fileLogger.LogInfo($"RenameStepCommand: wrote {finalLines.Length} lines to '{localPath}'.");
+
+            // Notify the LSP server about the change to a .feature file.
+            // When a closed feature file is modified by the rename, no didChange fires
+            // through VS's normal text document synchronization, leaving the server's
+            // in-memory match cache stale.  Send a synthetic didChange notification so
+            // that subsequent operations (e.g. Find All References) return fresh data.
+            if (localPath.EndsWith(".feature", StringComparison.OrdinalIgnoreCase))
+            {
+                var didChangePipe = GetPipe(_state.Service!);
+                if (didChangePipe is not null)
+                {
+                    var escapedContent = Newtonsoft.Json.JsonConvert.ToString(newContent);
+                    var featureUri = "file:///" + localPath.Replace('\\', '/');
+                    var didChangeParams = $"{{\"textDocument\":{{\"uri\":\"{featureUri}\",\"version\":1}},\"contentChanges\":[{{\"text\":{escapedContent}}}]}}";
+                    _ = didChangePipe.SendNotificationToServerAsync(
+                        "textDocument/didChange",
+                        didChangeParams,
+                        cancellationToken);
+                    _fileLogger.LogInfo($"RenameStepCommand: sent didChange for '{localPath}'.");
+                }
+            }
         }
 
         VsUtils.ShowStatusBarMessage("Reqnroll: Step renamed successfully.");
