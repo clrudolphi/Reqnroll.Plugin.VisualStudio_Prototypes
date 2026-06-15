@@ -385,17 +385,29 @@ public sealed class StepRenameHandler
     {
         var csPath = uri.GetFileSystemPath();
         if (string.IsNullOrEmpty(csPath))
+        {
+            _logger.LogVerbose("StepRenameHandler: BuildCSharpEditAsync — csPath is null/empty");
             return null;
+        }
 
         // Get file text from the document buffer, or read from disk
         string? fileText = null;
         if (_documentBuffer.TryGet(uri, out var buffer) && buffer?.Text != null)
+        {
             fileText = buffer.Text;
+            _logger.LogVerbose($"StepRenameHandler: BuildCSharpEditAsync — got text from buffer ({fileText.Length} chars)");
+        }
         else if (System.IO.File.Exists(csPath))
+        {
             fileText = await System.IO.File.ReadAllTextAsync(csPath);
+            _logger.LogVerbose($"StepRenameHandler: BuildCSharpEditAsync — got text from disk ({fileText.Length} chars)");
+        }
 
         if (fileText == null)
+        {
+            _logger.LogVerbose("StepRenameHandler: BuildCSharpEditAsync — no file text available");
             return null;
+        }
 
         // Parse into a SyntaxTree and wrap in CSharpStepDefinitionFile
         var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(fileText);
@@ -417,12 +429,17 @@ public sealed class StepRenameHandler
                 .Any(e => e.Token.ValueText == originalExpression))
             .ToList();
 
+        _logger.LogVerbose($"StepRenameHandler: BuildCSharpEditAsync — found {matchingMethods.Count} method(s) with expression '{originalExpression}' (sameExprIndex={sameExprIndex})");
+
         var targetMethod = sameExprIndex >= 0 && sameExprIndex < matchingMethods.Count
             ? matchingMethods[sameExprIndex]
             : matchingMethods.FirstOrDefault();
 
         if (targetMethod == null)
+        {
+            _logger.LogVerbose("StepRenameHandler: BuildCSharpEditAsync — no matching method found");
             return null;
+        }
 
         // Find the exact literal-expression attribute argument that matches
         var literalArgument = targetMethod.AttributeLists
@@ -433,12 +450,17 @@ public sealed class StepRenameHandler
             .FirstOrDefault(e => e.Token.ValueText == originalExpression);
 
         if (literalArgument == null)
+        {
+            _logger.LogVerbose("StepRenameHandler: BuildCSharpEditAsync — found method but no matching literal argument");
             return null;
+        }
 
         // Convert the character-offset TextSpan to line/column using the SyntaxTree
         var lineSpan = tree.GetLineSpan(literalArgument.Token.Span);
         var startPos = lineSpan.StartLinePosition;
         var endPos   = lineSpan.EndLinePosition;
+
+        _logger.LogVerbose($"StepRenameHandler: BuildCSharpEditAsync — returning edit at ({startPos.Line},{startPos.Character})-({endPos.Line},{endPos.Character}): '{newName}'");
 
         return new TextEdit
         {
