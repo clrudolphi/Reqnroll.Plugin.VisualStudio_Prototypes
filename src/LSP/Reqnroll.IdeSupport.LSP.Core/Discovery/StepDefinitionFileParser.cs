@@ -427,8 +427,11 @@ public class StepDefinitionFileParser
         foreach (var method in methods)
         {
             var pos = method.Identifier.GetLocation().GetLineSpan().StartLinePosition;
-            if (pos.Line != methodLine - 1 || pos.Character != methodColumn - 1)
+            if (pos.Line != methodLine - 1)
                 continue;
+            // Column check is intentionally omitted: the connector stores the method
+            // declaration start column, not the method identifier position, so an exact
+            // match would fail. The caller already disambiguates via attributeIndex.
 
             var attributes = EnumerateAttributes(method.AttributeLists).ToList();
             if (attributeIndex < 0 || attributeIndex >= attributes.Count)
