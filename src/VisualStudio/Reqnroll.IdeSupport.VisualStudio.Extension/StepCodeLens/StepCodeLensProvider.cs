@@ -97,6 +97,7 @@ internal sealed class StepCodeLens : InvokableCodeLens
         _traceSource     = traceSource;
         _fileUri         = fileUri;
         _methodStartLine = methodStartLine;
+        _state.RegisterLens(this, fileUri.ToString());
     }
 
     // VS.Extensibility reports the code-element range starting at the FIRST attribute line
@@ -233,7 +234,16 @@ internal sealed class StepCodeLens : InvokableCodeLens
     }
 
     /// <inheritdoc />
-    public override void Dispose() { }
+    public override void Dispose()
+    {
+        _state.UnregisterLens(this, _fileUri.ToString());
+    }
+
+    /// <summary>
+    /// Called by <see cref="StepCodeLensState.InvalidateLensesForFile"/> to trigger a
+    /// fresh call to <see cref="GetLabelAsync"/> on VS's next paint cycle.
+    /// </summary>
+    internal void InvalidateLabel() => Invalidate();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -112,7 +112,7 @@ public sealed class StepRenameHandler
             if (registry == ProjectBindingRegistry.Invalid)
                 return Task.FromResult<LspRange?>(null);
 
-            var binding = FindBindingAtLocation(registry, bindingLocation);
+            var binding = registry.FindBindingAtLocation(bindingLocation);
             if (binding == null)
                 return Task.FromResult<LspRange?>(null);
 
@@ -225,7 +225,7 @@ public sealed class StepRenameHandler
             if (binding != null)
                 _logger.LogVerbose($"StepRenameHandler: resolved binding via feature match cache: '{binding.Expression}'");
         }
-        binding ??= FindBindingAtLocation(registry, new SourceLocation(path, line, column));
+        binding ??= registry.FindBindingAtLocation(new SourceLocation(path, line, column));
         if (binding == null)
         {
             _logger.LogVerbose("StepRenameHandler: no binding at cursor position");
@@ -508,16 +508,6 @@ public sealed class StepRenameHandler
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
-
-    private static ProjectStepDefinitionBinding? FindBindingAtLocation(
-        ProjectBindingRegistry registry, SourceLocation location)
-    {
-        return registry.StepDefinitions
-            .FirstOrDefault(b => b.Implementation.SourceLocation != null &&
-                                 string.Equals(b.Implementation.SourceLocation.SourceFile, location.SourceFile, StringComparison.OrdinalIgnoreCase) &&
-                                 b.Implementation.SourceLocation.SourceFileLine == location.SourceFileLine &&
-                                 b.Implementation.SourceLocation.SourceFileColumn == location.SourceFileColumn);
-    }
 
     private TextEdit? BuildCSharpEdit(
         LiteralExpressionSyntax? literalArgument,

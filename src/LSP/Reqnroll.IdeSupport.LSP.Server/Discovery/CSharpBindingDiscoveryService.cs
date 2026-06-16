@@ -61,24 +61,8 @@ public sealed class CSharpBindingDiscoveryService : ICSharpBindingDiscoveryServi
 
         foreach (var project in owners)
         {
-            if (!project.Properties.TryGetValue(typeof(ConnectorBindingRegistryProvider), out var obj)
-                || obj is not ConnectorBindingRegistryProvider provider)
-            {
-                _logger.LogVerbose(
-                    $"[Roslyn] Project '{project.ProjectName}' has no binding provider yet; skipping.");
-                continue;
-            }
-
-            var previousCount = provider.Current.StepDefinitions.Length;
-            var file = FileDetails.FromPath(filePath).WithCSharpContent(text);
-            await provider.ApplyRoslynFileUpdateAsync(file).ConfigureAwait(false);
-            var newCount = provider.Current.StepDefinitions.Length;
-            var delta = newCount - previousCount;
-            var deltaStr = delta == 0 ? "no change" : (delta > 0 ? $"+{delta}" : delta.ToString());
-
-            _logger.LogInfo(
-                $"[Roslyn] Re-discovered bindings for '{Path.GetFileName(filePath)}' " +
-                $"in project '{project.ProjectName}': {newCount} step definition(s) ({deltaStr}).");
+            cancellationToken.ThrowIfCancellationRequested();
+            await ApplyToProjectAsync(project, filePath, text).ConfigureAwait(false);
         }
 
         // Telemetry: Roslyn discovery event (design doc Q17 §2.3).
@@ -93,5 +77,43 @@ public sealed class CSharpBindingDiscoveryService : ICSharpBindingDiscoveryServi
             ["ProjectCount"] = owners.Count,
             ["ProjectTargetFramework"] = owners.FirstOrDefault()?.TargetFrameworkMonikers,
         });
+    }
+
+    public async Task UpdateFromSourceForProjectAsync(
+        LspReqnrollProject project, string filePath, string text, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        await ApplyToProjectAsync(project, filePath, text).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Parses <paramref name="text"/> and replaces <paramref name="filePath"/>'s entries in
+    /// <paramref name="project"/>'s binding registry. Shared by the index-driven
+    /// (<see cref="UpdateFromSourceAsync"/>) and index-bypassing
+    /// (<see cref="UpdateFromSourceForProjectAsync"/>) entry points.
+    /// </summary>
+    private async Task ApplyToProjectAsync(LspReqnrollProject project, string filePath, string text)
+    {
+        if (!project.Properties.TryGetValue(typeof(ConnectorBindingRegistryProvider), out var obj)
+            || obj is not ConnectorBindingRegistryProvider provider)
+        {
+            _logger.LogVerbose(
+                $"[Roslyn] Project '{project.ProjectName}' has no binding provider yet; skipping.");
+            return;
+        }
+
+        var previousCount = provider.Current.StepDefinitions.Length;
+        var file = FileDetails.FromPath(filePath).WithCSharpContent(text);
+        await provider.ApplyRoslynFileUpdateAsync(file).ConfigureAwait(false);
+        var newCount = provider.Current.StepDefinitions.Length;
+        var delta = newCount - previousCount;
+        var deltaStr = delta == 0 ? "no change" : (delta > 0 ? $"+{delta}" : delta.ToString());
+
+        _logger.LogInfo(
+            $"[Roslyn] Re-discovered bindings for '{Path.GetFileName(filePath)}' " +
+            $"in project '{project.ProjectName}': {newCount} step definition(s) ({deltaStr}).");
     }
 }

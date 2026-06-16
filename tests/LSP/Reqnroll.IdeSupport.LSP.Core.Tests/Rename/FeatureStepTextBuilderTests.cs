@@ -144,4 +144,60 @@ public class FeatureStepTextBuilderTests
 
         result.Should().Be("hi world");
     }
+
+    // ── Scenario Outline with divergent step text ──────────────────────────────
+    //    When the step text has been edited independently (e.g. user typed changes in
+    //    the feature file), both static-segment alignment and regex may fail because
+    //    the old expression text no longer appears in the step.  The outline-placeholder
+    //    strategy must detect <...> tokens and map them to the new expression's slots. ──
+
+    [Fact]
+    public void Build_preserves_outline_placeholder_when_step_text_diverged()
+    {
+        // step text has "might be <result>" but old expression says "shouild be {int}"
+        // Regex '^the result shouild be (\d+)$' doesn't match "might be <result>"
+        // Static segments fail: "the result shouild be " not found in "the result might be <result>"
+        // Outline-placeholder detects <result> and maps to {int} slot
+        var result = FeatureStepTextBuilder.Build(
+            "the result should be {int}", "the result shouild be {int}",
+            new Regex("^the result shouild be (-?\\d+)$"),
+            "the result might be <result>");
+
+        result.Should().Be("the result should be <result>");
+    }
+
+    [Fact]
+    public void Build_outline_placeholder_multi_param_preserved_when_diverged()
+    {
+        var result = FeatureStepTextBuilder.Build(
+            "I ate {int} {string}", "I have {int} {string}",
+            new Regex("^I have (\\d+) (\\w+)$"),
+            "I consumed <count> <item>");
+
+        result.Should().Be("I ate <count> <item>");
+    }
+
+    [Fact]
+    public void Build_no_outline_placeholders_falls_through_to_newExpression()
+    {
+        // Both static and regex fail, but step has no <...> placeholders.
+        var result = FeatureStepTextBuilder.Build(
+            "the result is {int}", "the result shouild be {int}",
+            new Regex("^the result shouild be (-?\\d+)$"),
+            "the result should be awesome");
+
+        result.Should().Be("the result is {int}");
+    }
+
+    [Fact]
+    public void Build_outline_placeholder_count_mismatch_falls_through()
+    {
+        // 2 placeholders in step but only 1 slot in expression.
+        var result = FeatureStepTextBuilder.Build(
+            "the result is {int}", "the result is {int} {int}",
+            new Regex("^the result is (\\d+) (\\w+)$"),
+            "the result is <count> <item>");
+
+        result.Should().Be("the result is {int}");
+    }
 }

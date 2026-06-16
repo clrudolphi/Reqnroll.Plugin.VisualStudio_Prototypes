@@ -270,6 +270,20 @@ public record ProjectBindingRegistry
             StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Finds the first step-definition binding whose source location matches
+    /// <paramref name="location"/> (file path, line, and column). Returns
+    /// <see langword="null"/> when no binding matches.
+    /// </summary>
+    public ProjectStepDefinitionBinding? FindBindingAtLocation(SourceLocation location)
+    {
+        return StepDefinitions
+            .FirstOrDefault(b => b.Implementation.SourceLocation != null &&
+                string.Equals(b.Implementation.SourceLocation.SourceFile, location.SourceFile, StringComparison.OrdinalIgnoreCase) &&
+                b.Implementation.SourceLocation.SourceFileLine == location.SourceFileLine &&
+                b.Implementation.SourceLocation.SourceFileColumn == location.SourceFileColumn);
+    }
+
     private static string NormalizePath(string path)
     {
         try { return Path.GetFullPath(path); }

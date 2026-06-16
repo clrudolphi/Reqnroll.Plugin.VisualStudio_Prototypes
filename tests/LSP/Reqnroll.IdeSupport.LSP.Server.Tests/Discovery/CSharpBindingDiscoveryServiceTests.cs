@@ -127,6 +127,67 @@ public class CSharpBindingDiscoveryServiceTests : IDisposable
         project2.Dispose();
     }
 
+    // ── UpdateFromSourceForProjectAsync (index-bypassing, startup reconciliation) ─
+
+    [Fact]
+    public async Task UpdateFromSourceForProjectAsync_applies_to_given_project_without_resolving_owners()
+    {
+        var project  = DiscoveryTestSupport.MakeProject(_ideScope, _root1);
+        var provider = new ConnectorBindingRegistryProvider(project, _logger);
+        project.Properties[typeof(ConnectorBindingRegistryProvider)] = provider;
+
+        var changed = false;
+        provider.BindingRegistryChanged += (_, _) => changed = true;
+
+        var csPath = Path.Combine(_root1, "Steps.cs");
+
+        await CreateSut().UpdateFromSourceForProjectAsync(project, csPath, string.Empty, CancellationToken.None);
+
+        changed.Should().BeTrue("the known project's provider should be patched directly");
+        // The whole point of this overload: it never consults the membership index.
+        _scopeManager.DidNotReceive().ResolveOwners(Arg.Any<DocumentUri>());
+
+        provider.Dispose();
+        project.Dispose();
+    }
+
+    [Fact]
+    public async Task UpdateFromSourceForProjectAsync_noops_when_project_has_no_provider()
+    {
+        var project = DiscoveryTestSupport.MakeProject(_ideScope, _root1);
+        // No ConnectorBindingRegistryProvider in project.Properties.
+
+        var csPath = Path.Combine(_root1, "Steps.cs");
+
+        // Must not throw, and should log the "no binding provider" skip.
+        await CreateSut().UpdateFromSourceForProjectAsync(project, csPath, string.Empty, CancellationToken.None);
+
+        _logger.Received().Log(Arg.Is<LogMessage>(m =>
+            m.Level == TraceLevel.Verbose && m.Message.Contains("no binding provider")));
+
+        project.Dispose();
+    }
+
+    [Fact]
+    public async Task UpdateFromSourceForProjectAsync_noops_on_empty_path()
+    {
+        var project  = DiscoveryTestSupport.MakeProject(_ideScope, _root1);
+        var provider = new ConnectorBindingRegistryProvider(project, _logger);
+        project.Properties[typeof(ConnectorBindingRegistryProvider)] = provider;
+
+        var changed = false;
+        provider.BindingRegistryChanged += (_, _) => changed = true;
+
+        await CreateSut().UpdateFromSourceForProjectAsync(project, string.Empty, string.Empty, CancellationToken.None);
+
+        changed.Should().BeFalse("an empty file path is a no-op");
+
+        provider.Dispose();
+        project.Dispose();
+    }
+
+    // ── Fan-out (continued) ───────────────────────────────────────────────────
+
     [Fact]
     public async Task UpdateFromSourceAsync_with_single_owner_updates_only_that_provider()
     {

@@ -46,8 +46,13 @@ public static class FeatureStepTextBuilder
         // placeholder like <secondNumber>) by only rewriting the literal segments. The regex
         // strategy is the fallback for expressions whose static text is itself regex syntax
         // (e.g. non-capturing groups) that does not appear verbatim in the step.
+        //
+        // Scenario-outline placeholder substitution is the last resort: when both strategies
+        // above fail because the step text's literal content was edited independently of the
+        // binding expression, but the step still contains Scenario Outline <...> placeholders.
         return TryBuildViaStaticSegments(newExpression, oldExpression, stepText!)
                ?? TryBuildViaRegex(newExpression, regex, stepText!)
+               ?? TryBuildViaOutlinePlaceholders(newExpression, stepText!)
                ?? newExpression;
     }
 
@@ -187,5 +192,55 @@ public static class FeatureStepTextBuilder
             sb.Append(newSegments[i + 1]);
         }
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Detects Scenario Outline placeholders (⟨...⟩ tokens) in <paramref name="stepText"/>
+    /// and maps them positionally onto the parameter slots of <paramref name="newExpression"/>.
+    /// This handles cases where both regex matching and static-segment alignment fail because
+    /// the step text's literal content has been edited independently of the binding expression.
+    /// </summary>
+    private static string? TryBuildViaOutlinePlaceholders(string newExpression, string stepText)
+    {
+        var stepPlaceholders = ExtractOutlinePlaceholders(stepText);
+        if (stepPlaceholders.Count == 0)
+            return null;
+
+        var exprSlots = StepExpressionParameters.ExtractSlots(newExpression);
+        if (exprSlots.Count != stepPlaceholders.Count)
+            return null;
+
+        // Replace each parameter slot in the new expression with the corresponding
+        // Scenario Outline placeholder, preserving the non-parameter text.
+        var sb = new StringBuilder();
+        int slotIdx = 0;
+        for (int i = 0; i < newExpression.Length; i++)
+        {
+            var slotLength = StepExpressionParameters.SlotLengthAt(newExpression, i);
+            if (slotLength > 0)
+            {
+                sb.Append(stepPlaceholders[slotIdx]);
+                slotIdx++;
+                i += slotLength - 1;
+            }
+            else
+            {
+                sb.Append(newExpression[i]);
+            }
+        }
+        return sb.ToString();
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex PlaceholderPattern
+        = new(@"\<([^>]+)\>", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>Extracts Scenario Outline placeholder values (e.g. {"&lt;result&gt;", "&lt;secondNumber&gt;"}) from <paramref name="stepText"/> in order.</summary>
+    private static List<string> ExtractOutlinePlaceholders(string stepText)
+    {
+        var result = new List<string>();
+        var matches = PlaceholderPattern.Matches(stepText);
+        foreach (System.Text.RegularExpressions.Match m in matches)
+            result.Add(m.Value);
+        return result;
     }
 }

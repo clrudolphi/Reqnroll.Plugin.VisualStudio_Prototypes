@@ -162,15 +162,22 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
             var scaffoldInterceptor = new ScaffoldTrackingInterceptor(
                 () => _projectMonitor, _traceSource);
 
-            // Send pipeline:   VS → [logger, semanticTokens, scaffold] → Server
-            // Receive pipeline: Server → [logger, semanticTokens, scaffold, telemetry] → VS
-            var sendInterceptors    = new ILspMessageInterceptor[] { _inspectorLogger, semanticTokensInterceptor, scaffoldInterceptor };
+            // Watches textDocument/didChange on .cs files and invalidates code lenses
+            // so VS re-queries the server for updated usage counts after a binding edit.
+            var codeLensRefreshInterceptor = new CodeLensRefreshInterceptor(
+                _stepCodeLensState, _traceSource);
+
+            // Send pipeline:   VS → [logger, semanticTokens, scaffold, codeLensRefresh] → Server
+            // Receive pipeline: Server → [logger, semanticTokens, scaffold, codeLensRefresh, telemetry] → VS
+            // codeLensRefresh is on both pipelines: send watches .cs didChange; receive watches the
+            // server's reqnroll/refreshCodeLens push after a full registry replacement.
+            var sendInterceptors    = new ILspMessageInterceptor[] { _inspectorLogger, semanticTokensInterceptor, scaffoldInterceptor, codeLensRefreshInterceptor };
 
             // Telemetry interceptor: lazy reference because _analyticsTransmitter is resolved
             // from MEF on the main thread during OnServerInitializationResultAsync.
             var telemetryInterceptor = new TelemetryEventInterceptor(() => _analyticsTransmitter, _traceSource);
             var receiveInterceptors = new ILspMessageInterceptor[]
-                { _inspectorLogger, semanticTokensInterceptor, scaffoldInterceptor, telemetryInterceptor };
+                { _inspectorLogger, semanticTokensInterceptor, scaffoldInterceptor, codeLensRefreshInterceptor, telemetryInterceptor };
 
             _interceptingPipe = new LspInterceptingPipe(rawPipe, sendInterceptors, receiveInterceptors, _traceSource);
             // Pass CancellationToken.None: the pumps must live for the entire connection
@@ -223,7 +230,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
             _goToDefinitionState.Service            = new GoToDefinitionService(_interceptingPipe, _traceSource);
             _stepCodeLensState.Service              = new StepCodeLensService(_interceptingPipe, _traceSource);
             _commentToggleState.Service             = new CommentToggleService(_interceptingPipe, _traceSource);
-            _renameStepState.Service                 = new RenameStepService(_interceptingPipe);
+            _renameStepState.Service                 = new RenameStepService(_interceptingPipe, _traceSource);
 
             // Set the VSSDK command filter redirect so the keyboard shortcut interception
             // for Edit.CommentSelection/UncommentSelection/ToggleLineComment calls our service.
