@@ -55,7 +55,7 @@ public class SemanticTokensPushHandler : INotificationHandler<MatchCacheChangedN
             return;
 
         var data = tokens.Data.ToArray();
-        _languageServer.SendNotification("reqnroll/semanticTokens", new PublishSemanticTokensParams
+        _languageServer.SendNotification(LspMethodNames.ReqnrollSemanticTokens, new PublishSemanticTokensParams
         {
             Uri = notification.Uri.ToString(),
             Version = notification.Version,

@@ -8,6 +8,7 @@ using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
@@ -99,7 +100,7 @@ public sealed class DiagnosticsPublishHandler : INotificationHandler<MatchCacheC
             $"DiagnosticsPublishHandler: pushing {lspDiagnostics.Length} diagnostic(s) for {uri} v{notification.Version}");
 
         _languageServer.SendNotification(
-            "textDocument/publishDiagnostics",
+            LspMethodNames.TextDocumentPublishDiagnostics,
             new PublishDiagnosticsParams
             {
                 Uri         = uri,

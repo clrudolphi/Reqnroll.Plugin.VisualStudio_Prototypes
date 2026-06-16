@@ -112,11 +112,11 @@ public static class LanguageServerOptionsExtensions
 
         // ── F16 Step Rename ────────────────────────────────────────────────────
         options.OnRequest<PrepareRenameParams, LspRange?>(
-            "textDocument/prepareRename",
+            LspMethodNames.TextDocumentPrepareRename,
             (request, ct) => resolver!.Get<StepRenameHandler>().HandlePrepareRenameAsync(request, ct));
 
         options.OnRequest<RenameParams, WorkspaceEdit?>(
-            "textDocument/rename",
+            LspMethodNames.TextDocumentRename,
             (request, ct) => resolver!.Get<StepRenameHandler>().HandleRenameAsync(request, ct));
 
         options.OnRequest<TextDocumentPositionParams, RenameTargetsResponse?>(

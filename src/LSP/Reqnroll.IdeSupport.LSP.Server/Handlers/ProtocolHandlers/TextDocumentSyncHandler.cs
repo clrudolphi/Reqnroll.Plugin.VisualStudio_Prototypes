@@ -9,6 +9,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
@@ -142,7 +143,7 @@ public class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
         // LSP spec: sending an empty diagnostics list for a URI clears all previously
         // pushed diagnostics for that URI on the client.
         _languageServer.SendNotification(
-            "textDocument/publishDiagnostics",
+            LspMethodNames.TextDocumentPublishDiagnostics,
             new PublishDiagnosticsParams
             {
                 Uri         = uri,

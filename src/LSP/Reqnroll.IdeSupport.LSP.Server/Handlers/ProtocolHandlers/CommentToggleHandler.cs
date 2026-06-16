@@ -7,6 +7,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Commenting;
+using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
@@ -95,7 +96,7 @@ public sealed class CommentToggleHandler : IExecuteCommandHandler
         // Telemetry
         _telemetryService?.SendEvent("CommentUncomment command executed", new());
 
-        _languageServer.SendNotification("workspace/applyEdit", edit);
+        _languageServer.SendNotification(LspMethodNames.WorkspaceApplyEdit, edit);
 
         return Task.FromResult(Unit.Value);
     }

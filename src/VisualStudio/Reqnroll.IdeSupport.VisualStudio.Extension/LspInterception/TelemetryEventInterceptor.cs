@@ -18,6 +18,9 @@ namespace Reqnroll.IdeSupport.VisualStudio.Extension.LspInterception;
 /// </remarks>
 internal sealed class TelemetryEventInterceptor : ILspMessageInterceptor
 {
+    // Local constant rather than LspMethodNames.TelemetryEvent because the VS Extension
+    // references LSP.Server with <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    // and therefore cannot consume its types at compile time.
     private const string TelemetryEventMethod = "telemetry/event";
 
     private readonly Func<IAnalyticsTransmitter?> _getTransmitter;

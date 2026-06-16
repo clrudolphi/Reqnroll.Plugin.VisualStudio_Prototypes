@@ -108,7 +108,7 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
             try
             {
                 _languageServer.SendNotification(
-                    "reqnroll/refreshCodeLens",
+                    LspMethodNames.ReqnrollRefreshCodeLens,
                     new RefreshCodeLensParams { ProjectName = project.ProjectName });
             }
             catch (Exception ex)
@@ -123,7 +123,7 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
         try
         {
             await _languageServer.Client
-                .SendRequest("workspace/codeLens/refresh")
+                .SendRequest(LspMethodNames.WorkspaceCodeLensRefresh)
                 .ReturningVoid(CancellationToken.None)
                 .ConfigureAwait(false);
         }
