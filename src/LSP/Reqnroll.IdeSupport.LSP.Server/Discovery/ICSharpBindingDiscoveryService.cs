@@ -1,4 +1,5 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Discovery;
 
@@ -16,4 +17,17 @@ public interface ICSharpBindingDiscoveryService
     /// has no binding provider yet.
     /// </summary>
     Task UpdateFromSourceAsync(DocumentUri uri, string text, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Re-discovers the bindings declared in <paramref name="text"/> for a <em>known</em>
+    /// <paramref name="project"/> and replaces that file's entries in the project's binding
+    /// registry — <b>without</b> consulting the membership index (<c>ResolveOwners</c>).
+    /// <para>
+    /// Used during Connector startup reconciliation, where the membership baseline may not have
+    /// arrived yet (so index lookups would return no owners) but the owning project is already
+    /// known to the caller. No-ops when the project has no binding provider yet.
+    /// </para>
+    /// </summary>
+    Task UpdateFromSourceForProjectAsync(
+        LspReqnrollProject project, string filePath, string text, CancellationToken cancellationToken);
 }

@@ -1,9 +1,7 @@
 using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
-using Reqnroll.IdeSupport.Common;
 using Reqnroll.IdeSupport.Common.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
@@ -70,13 +68,13 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
     {
         if (notification.IsFullReplacement)
         {
-            // After a Connector full replacement, re-discover bindings from open .cs files
-            // using Roslyn source-level discovery.  The Connector provides bindings from the
-            // compiled DLL, which may be stale if the user renamed/edited bindings without
-            // rebuilding.  Source-level discovery reads the actual editor buffers and
-            // replaces the stale compiled entries with fresh source-level data, preventing
-            // "Step definition not found" errors on steps that were correctly renamed.
-            await RediscoverOpenCsFilesAsync(notification.Project, cancellationToken)
+            // After a Connector full replacement, re-discover bindings from the project's .cs
+            // files using Roslyn source-level discovery.  The Connector provides bindings from
+            // the compiled DLL, which may be stale if the user renamed/edited bindings without
+            // rebuilding.  Source-level discovery replaces the stale compiled entries with fresh
+            // source-level data, preventing "Step definition not found" (and the inverse, a step
+            // still shown as bound to a renamed binding) on files edited but not rebuilt.
+            await RediscoverCsFilesAsync(notification.Project, cancellationToken)
                 .ConfigureAwait(false);
 
             await ScanAllFeatureFilesAsync(notification.Project, cancellationToken).ConfigureAwait(false);
@@ -228,62 +226,146 @@ public class BindingRegistryChangedHandler : INotificationHandler<BindingRegistr
     }
 
     /// <summary>
-    /// Re-runs Roslyn source-level discovery on all open .cs files belonging to
-    /// <paramref name="project"/> after a Connector full replacement has overwritten
-    /// the registry with potentially stale compiled bindings.
-    /// Uses a direct folder-prefix check (not the membership index) and accesses
-    /// the provider directly from the project's Properties to avoid the
-    /// ResolveOwners dependency in UpdateFromSourceAsync.
+    /// After a Connector full replacement (which loads bindings from the compiled assembly),
+    /// re-runs Roslyn source-level discovery on the project's <c>.cs</c> step-definition files
+    /// so that source edited <em>since the last build</em> overrides the stale compiled bindings.
+    /// <para>Covers two cases:</para>
+    /// <list type="bullet">
+    ///   <item>open, possibly-unsaved <c>.cs</c> buffers — reconciled unconditionally, since an
+    ///   unsaved edit is never reflected in the DLL; and</item>
+    ///   <item>closed <c>.cs</c> files on disk whose last-write time is newer than the output
+    ///   assembly — i.e. edited then saved without a rebuild. This is the case that survives a VS
+    ///   restart: the file is on disk but not open, so without this it would never override the
+    ///   stale compiled binding.</item>
+    /// </list>
+    /// Files unchanged since the build are faithfully represented by the DLL and are skipped to
+    /// bound the cost. Reconciliation is delegated to <see cref="ICSharpBindingDiscoveryService"/>,
+    /// which patches the project's registry directly without consulting the membership index
+    /// (the baseline may not have arrived yet at startup).
     /// </summary>
-    private async Task RediscoverOpenCsFilesAsync(LspReqnrollProject project, CancellationToken ct)
+    private async Task RediscoverCsFilesAsync(LspReqnrollProject project, CancellationToken ct)
     {
-        var projectFolder = project.ProjectFolder;
-        if (string.IsNullOrEmpty(projectFolder))
-            return;
-
-        if (!project.Properties.TryGetValue(typeof(ConnectorBindingRegistryProvider), out var obj)
-            || obj is not ConnectorBindingRegistryProvider provider)
-        {
-            _logger.LogVerbose(
-                $"[Connector startup] No binding provider for '{project.ProjectName}'; skipping Roslyn rediscovery.");
-            return;
-        }
-
-        var csBuffers = _documentBufferService.All
-            .Where(b =>
-            {
-                var path = b.Uri.GetFileSystemPath();
-                return !string.IsNullOrEmpty(path)
-                    && path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-                    && !string.IsNullOrEmpty(b.Text)
-                    && path.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase);
-            })
-            .ToList();
-
-        if (csBuffers.Count == 0)
+        var filesToReconcile = CollectCsFilesToReconcile(project);
+        if (filesToReconcile.Count == 0)
             return;
 
         _logger.LogInfo(
-            $"[Connector startup] Re-discovering {csBuffers.Count} open .cs file(s) via Roslyn " +
-            $"for project '{project.ProjectName}' to override stale compiled bindings.");
+            $"[Connector startup] Roslyn-reconciling {filesToReconcile.Count} .cs file(s) for project " +
+            $"'{project.ProjectName}' to override potentially stale compiled bindings.");
 
-        foreach (var buffer in csBuffers)
+        foreach (var (filePath, text) in filesToReconcile)
         {
             ct.ThrowIfCancellationRequested();
             try
             {
-                var filePath = buffer.Uri.GetFileSystemPath()!;
-                var file = FileDetails.FromPath(filePath).WithCSharpContent(buffer.Text);
-                await provider.ApplyRoslynFileUpdateAsync(file).ConfigureAwait(false);
-
-                _logger.LogVerbose(
-                    $"[Connector startup] Roslyn rediscovery applied for '{filePath}' in project '{project.ProjectName}'.");
+                await _csharpDiscoveryService
+                    .UpdateFromSourceForProjectAsync(project, filePath, text, ct)
+                    .ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(
-                    $"[Connector startup] Roslyn rediscovery failed for '{buffer.Uri}': {ex.Message}");
+                    $"[Connector startup] Roslyn rediscovery failed for '{filePath}': {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Selects the <c>.cs</c> files to reconcile after a full replacement and pairs each with the
+    /// source text to parse: every open project-owned <c>.cs</c> buffer (unsaved edits always win,
+    /// using the buffer text), plus closed step-definition files newer than the compiled assembly
+    /// (using on-disk text).
+    /// </summary>
+    private List<(string FilePath, string Text)> CollectCsFilesToReconcile(LspReqnrollProject project)
+    {
+        var projectFolder = project.ProjectFolder;
+        if (string.IsNullOrEmpty(projectFolder))
+            return [];
+
+        // 1. Open, project-owned .cs buffers — unsaved edits override the DLL regardless of mtime.
+        //    Folder-prefix (not the index) is used deliberately: at startup the membership baseline
+        //    may not have arrived, and these files are known to be in the editor anyway.
+        var openByPath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var buffer in _documentBufferService.All)
+        {
+            var path = buffer.Uri.GetFileSystemPath();
+            if (!string.IsNullOrEmpty(path)
+                && path!.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrEmpty(buffer.Text)
+                && path.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                openByPath[path] = buffer.Text;
+            }
+        }
+
+        var result = openByPath.Select(kvp => (kvp.Key, kvp.Value)).ToList();
+
+        // 2. Closed .cs step-def files edited since the last build (newer than the assembly).
+        //    No assembly (never built) => nothing compiled can be stale => only the open buffers
+        //    above are relevant.
+        var assemblyWriteTimeUtc = GetAssemblyWriteTimeUtc(project);
+        if (assemblyWriteTimeUtc is null)
+            return result;
+
+        foreach (var path in EnumerateProjectStepDefinitionFiles(project))
+        {
+            if (openByPath.ContainsKey(path))
+                continue; // already covered by its open buffer above
+
+            DateTime mtimeUtc;
+            try { mtimeUtc = File.GetLastWriteTimeUtc(path); }
+            catch { continue; }
+
+            if (mtimeUtc <= assemblyWriteTimeUtc.Value)
+                continue; // unchanged since the build → the compiled binding is authoritative
+
+            try
+            {
+                result.Add((path, File.ReadAllText(path)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    $"[Connector startup] Could not read '{path}' for Roslyn rediscovery: {ex.Message}");
+            }
+        }
+
+        return result;
+    }
+
+    private static DateTime? GetAssemblyWriteTimeUtc(LspReqnrollProject project)
+    {
+        var assemblyPath = project.OutputAssemblyPath;
+        if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath))
+            return null;
+        try { return File.GetLastWriteTimeUtc(assemblyPath); }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Enumerates the project's <c>.cs</c> step-definition files: the membership index when a
+    /// baseline has been received (authoritative — includes linked files, excludes obj/bin),
+    /// otherwise a folder glob that skips build output.
+    /// </summary>
+    private IReadOnlyCollection<string> EnumerateProjectStepDefinitionFiles(LspReqnrollProject project)
+    {
+        if (_scopeManager.HasBaselineForProject(project))
+            return _scopeManager.GetBindingFilePathsForProject(project);
+
+        var folder = project.ProjectFolder;
+        if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
+            return [];
+
+        return Directory
+            .EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories)
+            .Where(p => !IsInBuildOutput(p, folder))
+            .ToList();
+    }
+
+    private static bool IsInBuildOutput(string path, string projectFolder)
+    {
+        var relative = path.Substring(projectFolder.Length).Replace('\\', '/');
+        return relative.Contains("/obj/", StringComparison.OrdinalIgnoreCase)
+            || relative.Contains("/bin/", StringComparison.OrdinalIgnoreCase);
     }
 }

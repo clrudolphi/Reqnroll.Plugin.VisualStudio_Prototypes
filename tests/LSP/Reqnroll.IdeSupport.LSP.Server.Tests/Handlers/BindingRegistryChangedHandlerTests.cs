@@ -307,7 +307,152 @@ public class BindingRegistryChangedHandlerTests : IDisposable
         _languageServer.Client.DidNotReceive().SendRequest("workspace/codeLens/refresh");
     }
 
+    // ── .cs rediscovery after full replacement (stale-DLL reconciliation) ─────
+
+    [Fact]
+    public async Task Rediscover_reconciles_closed_cs_file_edited_since_build()
+    {
+        // Assembly built an hour ago; Steps.cs saved just now (edited but not rebuilt) — the
+        // exact "edit, save, restart VS" scenario where the compiled binding is stale.
+        var buildTime = DateTime.UtcNow.AddHours(-1);
+        var project   = MakeProjectWithBuiltAssembly(buildTime);
+
+        var stepsPath = WriteCsFile("Steps.cs", "// renamed step", DateTime.UtcNow);
+
+        IndexBindingFiles(project, stepsPath);
+
+        await CreateSut().Handle(
+            new BindingRegistryChangedNotification(project, IsFullReplacement: true),
+            CancellationToken.None);
+
+        await _csharpDiscovery.Received(1).UpdateFromSourceForProjectAsync(
+            project,
+            Arg.Is<string>(p => PathEq(p, stepsPath)),
+            Arg.Is<string>(t => t.Contains("renamed step")),
+            Arg.Any<CancellationToken>());
+
+        project.Dispose();
+    }
+
+    [Fact]
+    public async Task Rediscover_skips_closed_cs_file_unchanged_since_build()
+    {
+        // Steps.cs is older than the assembly → the DLL faithfully represents it → skip.
+        var buildTime = DateTime.UtcNow.AddHours(-1);
+        var project   = MakeProjectWithBuiltAssembly(buildTime);
+
+        var stepsPath = WriteCsFile("Steps.cs", "// in sync with DLL", DateTime.UtcNow.AddHours(-2));
+
+        IndexBindingFiles(project, stepsPath);
+
+        await CreateSut().Handle(
+            new BindingRegistryChangedNotification(project, IsFullReplacement: true),
+            CancellationToken.None);
+
+        await _csharpDiscovery.DidNotReceive().UpdateFromSourceForProjectAsync(
+            Arg.Any<LspReqnrollProject>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        project.Dispose();
+    }
+
+    [Fact]
+    public async Task Rediscover_reconciles_open_dirty_cs_buffer_regardless_of_timestamp()
+    {
+        // Disk copy is older than the build, but the open buffer has unsaved edits that the DLL
+        // can never reflect → must reconcile using the buffer text, not the disk text.
+        var buildTime = DateTime.UtcNow.AddHours(-1);
+        var project   = MakeProjectWithBuiltAssembly(buildTime);
+
+        var openPath = WriteCsFile("OpenSteps.cs", "// stale disk text", DateTime.UtcNow.AddHours(-2));
+        var openUri  = DocumentUri.FromFileSystemPath(openPath);
+        _bufferService.All.Returns(new[] { new DocumentBuffer(openUri, 3, "// unsaved buffer edit") });
+
+        IndexBindingFiles(project, openPath);
+
+        await CreateSut().Handle(
+            new BindingRegistryChangedNotification(project, IsFullReplacement: true),
+            CancellationToken.None);
+
+        // Reconciled exactly once, with the BUFFER text — not the on-disk text.
+        await _csharpDiscovery.Received(1).UpdateFromSourceForProjectAsync(
+            project,
+            Arg.Is<string>(p => PathEq(p, openPath)),
+            Arg.Is<string>(t => t.Contains("unsaved buffer edit")),
+            Arg.Any<CancellationToken>());
+        await _csharpDiscovery.DidNotReceive().UpdateFromSourceForProjectAsync(
+            project, Arg.Any<string>(), Arg.Is<string>(t => t.Contains("stale disk text")), Arg.Any<CancellationToken>());
+
+        project.Dispose();
+    }
+
+    [Fact]
+    public async Task Rediscover_skips_closed_files_when_project_not_built()
+    {
+        // No output assembly exists → nothing compiled can be stale → closed files are not read.
+        // (_project's default OutputAssemblyPath points at a file that was never created.)
+        var stepsPath = WriteCsFile("Steps.cs", "// newer than nothing", DateTime.UtcNow);
+
+        IndexBindingFiles(_project, stepsPath);
+
+        await CreateSut().Handle(
+            new BindingRegistryChangedNotification(_project, IsFullReplacement: true),
+            CancellationToken.None);
+
+        await _csharpDiscovery.DidNotReceive().UpdateFromSourceForProjectAsync(
+            Arg.Any<LspReqnrollProject>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Rediscover_does_not_run_on_incremental_change()
+    {
+        var buildTime = DateTime.UtcNow.AddHours(-1);
+        var project   = MakeProjectWithBuiltAssembly(buildTime);
+        var stepsPath = WriteCsFile("Steps.cs", "// edited", DateTime.UtcNow);
+        IndexBindingFiles(project, stepsPath);
+
+        // IsFullReplacement = false → no stale-DLL reconciliation (it's a live Roslyn patch path).
+        await CreateSut().Handle(
+            new BindingRegistryChangedNotification(project, IsFullReplacement: false),
+            CancellationToken.None);
+
+        await _csharpDiscovery.DidNotReceive().UpdateFromSourceForProjectAsync(
+            Arg.Any<LspReqnrollProject>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        project.Dispose();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>Creates a project whose output assembly exists on disk with the given write time.</summary>
+    private LspReqnrollProject MakeProjectWithBuiltAssembly(DateTime assemblyWriteUtc)
+    {
+        var assemblyPath = Path.Combine(_projectFolder, "bin", "Debug", "App.dll");
+        Directory.CreateDirectory(Path.GetDirectoryName(assemblyPath)!);
+        File.WriteAllText(assemblyPath, "fake-dll");
+        File.SetLastWriteTimeUtc(assemblyPath, assemblyWriteUtc);
+        return DiscoveryTestSupport.MakeProject(_ideScope, _projectFolder, outputAssemblyPath: assemblyPath);
+    }
+
+    /// <summary>Writes a .cs file under the project folder with a controlled last-write time.</summary>
+    private string WriteCsFile(string name, string content, DateTime writeUtc)
+    {
+        var path = Path.Combine(_projectFolder, name);
+        File.WriteAllText(path, content);
+        File.SetLastWriteTimeUtc(path, writeUtc);
+        return path;
+    }
+
+    /// <summary>Marks the project as baselined and attributes the given .cs files to it in the index.</summary>
+    private void IndexBindingFiles(LspReqnrollProject project, params string[] bindingFiles)
+    {
+        _scopeManager.HasBaselineForProject(project).Returns(true);
+        _scopeManager.GetBindingFilePathsForProject(project).Returns(bindingFiles);
+        // Keep the (separate) feature-file scan a no-op for these tests.
+        _scopeManager.GetIndexedFeatureFiles(project).Returns(Array.Empty<string>());
+    }
+
+    private static bool PathEq(string actual, string expected)
+        => string.Equals(Path.GetFullPath(actual), Path.GetFullPath(expected), StringComparison.OrdinalIgnoreCase);
 
     private static bool FilePathMatches(DocumentUri uri, string expected)
     {
