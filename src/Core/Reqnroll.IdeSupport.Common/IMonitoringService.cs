@@ -42,7 +42,7 @@ public interface IMonitoringService
 
     //void MonitorNotificationShown(NotificationData notification);
     //void MonitorNotificationDismissed(NotificationData notification);
-    //void MonitorLinkClicked(string source, string url, Dictionary<string, object> additionalProps = null);
+    void MonitorLinkClicked(string source, string url, Dictionary<string, object> additionalProps = null);
 
     void MonitorUpgradeDialogDismissed(Dictionary<string, object> additionalProps);
     void MonitorWelcomeDialogDismissed(Dictionary<string, object> additionalProps);

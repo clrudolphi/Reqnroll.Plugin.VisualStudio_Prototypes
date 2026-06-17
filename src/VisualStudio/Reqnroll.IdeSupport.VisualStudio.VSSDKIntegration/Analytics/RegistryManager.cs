@@ -8,9 +8,9 @@ namespace Reqnroll.IdeSupport.VisualStudio.SDKIntegration.Analytics;
 public class RegistryManager : IRegistryManager
 {
 #if DEBUG
-    private static string RegPath => @"Software\Reqnroll\Debug";
+    private static string RegPath => @"Software\Reqnroll\VSLSP\Debug";
 #else
-    private static string RegPath => @"Software\Reqnroll";
+    private static string RegPath => @"Software\Reqnroll\VSLSP";
 #endif
 
     private const string Version = "version.vs2022";

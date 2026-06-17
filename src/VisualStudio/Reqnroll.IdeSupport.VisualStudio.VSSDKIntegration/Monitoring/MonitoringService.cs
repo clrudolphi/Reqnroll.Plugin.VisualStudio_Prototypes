@@ -153,14 +153,14 @@ public class MonitoringService : IMonitoringService
     //        GetNotificationProps(notification)));
     //}
 
-    //public void MonitorLinkClicked(string source, string url, Dictionary<string, object> additionalProps = null)
-    //{
-    //    additionalProps ??= new Dictionary<string, object>();
-    //    additionalProps.Add("Source", source);
-    //    additionalProps.Add("URL", url);
-    //    _analyticsTransmitter.TransmitEvent(new GenericEvent("Link clicked",
-    //        additionalProps));
-    //}
+    public void MonitorLinkClicked(string source, string url, Dictionary<string, object> additionalProps = null)
+    {
+        additionalProps ??= new Dictionary<string, object>();
+        additionalProps.Add("Source", source);
+        additionalProps.Add("URL", url);
+        _analyticsTransmitter.TransmitEvent(new GenericEvent("Link clicked",
+            additionalProps));
+    }
 
     public void MonitorUpgradeDialogDismissed(Dictionary<string, object> additionalProps)
     {

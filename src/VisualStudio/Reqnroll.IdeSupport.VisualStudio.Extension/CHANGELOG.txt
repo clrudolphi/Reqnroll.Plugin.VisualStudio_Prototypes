@@ -1,0 +1,13 @@
+# vNext
+
+## Improvements:
+
+## Bug fixes:
+
+# v2026.0.1 - 2026-06-16
+
+## Initial release of Reqnroll IDE Support
+
+* LSP-based Gherkin language server with syntax highlighting, keyword completion, step definition matching
+* VS.Extensibility SDK-based Visual Studio extension with commands for Find Step Usages, Go To Definition, Rename Step, Code Lens, Comment Toggle
+* Cross-IDE support: Visual Studio, VS Code, and JetBrains Rider

@@ -26,5 +26,5 @@ public interface IWizardDialogService
     /// <summary>
     /// Shows the Upgrade/changelog dialog.
     /// </summary>
-    //void ShowUpgradeDialog(string newVersion, string changeLog);
+    void ShowUpgradeDialog(string newVersion, string changeLog);
 }

@@ -1,8 +1,13 @@
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Reqnroll.IdeSupport.Common;
+using Reqnroll.IdeSupport.Common.Analytics;
+using Reqnroll.IdeSupport.Common.Diagnostics;
+using Reqnroll.IdeSupport.VisualStudio.Wizards.VsIntegration;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
@@ -22,21 +27,123 @@ public sealed class ReqnrollPluginPackage : AsyncPackage
     public const string PackageGuidString = "8d5fe503-e038-4079-9e45-697e0dcb3758";
 
     private static readonly TraceSource TraceSource = new("ReqnrollPluginPackage", SourceLevels.Information);
+    private SynchronousFileLogger _fileLogger = null!;
 
     protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
     {
         await base.InitializeAsync(cancellationToken, progress);
 
+        _fileLogger = new SynchronousFileLogger();
+        _fileLogger.LogInfo("ReqnrollPluginPackage: InitializeAsync started.");
+
         TraceSource.TraceInformation("Package initialised; waiting for solution load.");
+        _fileLogger.LogInfo("Waiting for solution load...");
 
         await WaitForSolutionLoadAsync(cancellationToken);
 
-        TraceSource.TraceInformation("Solution loaded; activating .feature file if needed.");
+        // NOTE: We intentionally do NOT realize .feature stub frames here. Doing so at
+        // solution load races with VS's own restore of feature tabs and spawns a second
+        // LSP server process, leaving the editor bound to an unmatched server (no step
+        // parameter coloring / no CodeLens usage counts). The LanguageServerProvider
+        // activates the normal way (VS realizes a feature tab, or the user opens a
+        // feature file), and ReqnrollLanguageClient.OnServerInitializationResultAsync
+        // flushes any remaining stubs at the safe post-server-init point.
+        // TODO(Q23): reinstate a non-racing/idempotent way to start the LSP when the
+        // foreground tab is a .cs file and no feature file is open.
 
-        await VsStubFrameInitializer.EnsureFeatureFileActivatedAsync(
-            this, TraceSource, cancellationToken);
+        _fileLogger.LogInfo("Solution loaded.");
 
+        // Show the Welcome (first install) or Upgrade (version change) dialog
+        // if appropriate, after a short delay so VS can finish initializing.
+        await RunWelcomeServiceAsync(cancellationToken);
+
+        _fileLogger.LogInfo("Package initialisation complete.");
         TraceSource.TraceInformation("Package initialisation complete.");
+    }
+
+    private async Task RunWelcomeServiceAsync(CancellationToken cancellationToken)
+    {
+        _fileLogger.LogInfo("RunWelcomeServiceAsync: starting.");
+        try
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            var sp = ServiceProvider.GlobalProvider;
+
+            // Resolve MEF services
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: resolving IRegistryManager...");
+            var registryManager = VsUtils.ResolveMefDependency<IRegistryManager>(sp);
+            if (registryManager is null)
+            {
+                _fileLogger.LogInfo("RunWelcomeServiceAsync: IRegistryManager not available, skipping.");
+                TraceSource.TraceEvent(TraceEventType.Warning, 0,
+                    "RunWelcomeService: IRegistryManager not available, skipping.");
+                return;
+            }
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: IRegistryManager resolved OK.");
+
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: resolving IVersionProvider...");
+            var versionProvider = VsUtils.ResolveMefDependency<IVersionProvider>(sp);
+            if (versionProvider is null)
+            {
+                _fileLogger.LogInfo("RunWelcomeServiceAsync: IVersionProvider not available, skipping.");
+                TraceSource.TraceEvent(TraceEventType.Warning, 0,
+                    "RunWelcomeService: IVersionProvider not available, skipping.");
+                return;
+            }
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: IVersionProvider resolved OK. Version=" + versionProvider.GetExtensionVersion());
+
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: resolving IFileSystemForIDE...");
+            var fileSystem = VsUtils.ResolveMefDependency<IFileSystemForIDE>(sp);
+            if (fileSystem is null)
+            {
+                _fileLogger.LogInfo("RunWelcomeServiceAsync: IFileSystemForIDE not available, skipping.");
+                TraceSource.TraceEvent(TraceEventType.Warning, 0,
+                    "RunWelcomeService: IFileSystemForIDE not available, skipping.");
+                return;
+            }
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: IFileSystemForIDE resolved OK.");
+
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: resolving IIdeScope...");
+            var ideScope = VsUtils.ResolveMefDependency<IIdeScope>(sp);
+            if (ideScope is null)
+            {
+                _fileLogger.LogInfo("RunWelcomeServiceAsync: IIdeScope not available, skipping.");
+                TraceSource.TraceEvent(TraceEventType.Warning, 0,
+                    "RunWelcomeService: IIdeScope not available, skipping.");
+                return;
+            }
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: IIdeScope resolved OK.");
+
+            // Create the dialog service (manual creation, not MEF-exported)
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: resolving IVsUIShell...");
+            var vsUiShell = sp.GetService(typeof(SVsUIShell)) as IVsUIShell;
+            if (vsUiShell is null)
+            {
+                _fileLogger.LogInfo("RunWelcomeServiceAsync: IVsUIShell not available, skipping.");
+                TraceSource.TraceEvent(TraceEventType.Warning, 0,
+                    "RunWelcomeService: IVsUIShell not available, skipping.");
+                return;
+            }
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: IVsUIShell resolved OK.");
+
+            var monitoringService = ideScope.MonitoringService;
+            var dialogService = new VsWizardDialogService(vsUiShell, monitoringService);
+
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: creating WelcomeService...");
+            var welcomeService = new WelcomeService(
+                registryManager, versionProvider, dialogService, fileSystem);
+
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: calling OnIdeScopeActivityStarted...");
+            welcomeService.OnIdeScopeActivityStarted(ideScope);
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: OnIdeScopeActivityStarted returned (dialog scheduled with 7s delay).");
+        }
+        catch (Exception ex)
+        {
+            _fileLogger.LogInfo("RunWelcomeServiceAsync: FAILED: " + ex.GetType().Name + ": " + ex.Message);
+            TraceSource.TraceEvent(TraceEventType.Warning, 0,
+                "RunWelcomeService: Failed: {0}", ex.Message);
+        }
     }
 
     private async Task WaitForSolutionLoadAsync(CancellationToken cancellationToken)

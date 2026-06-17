@@ -1,3 +1,4 @@
+#nullable disable
 using Reqnroll.IdeSupport.Common;
 using Reqnroll.IdeSupport.Common.Analytics;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
@@ -28,5 +29,6 @@ public sealed class NullMonitoringService : IMonitoringService
     public void MonitorProjectTemplateWizardCompleted(string dotNetFramework, string unitTestFramework, bool addFluentAssertions) { }
     public void MonitorUpgradeDialogDismissed(Dictionary<string, object> additionalProps) { }
     public void MonitorWelcomeDialogDismissed(Dictionary<string, object> additionalProps) { }
+    public void MonitorLinkClicked(string source, string url, Dictionary<string, object> additionalProps = null) { }
     public void TransmitEvent(IAnalyticsEvent runtimeEvent) { }
 }

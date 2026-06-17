@@ -8,6 +8,10 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
     <VssdkCompatibleExtension>true</VssdkCompatibleExtension>
+    <!-- Generate the package .pkgdef from the [Provide*] attributes on ReqnrollPluginPackage
+         so it flows through the Microsoft.VisualStudio.VsPackage asset (PkgdefProjectOutputGroup)
+         that the .vsixmanifest declares. The Extensibility SDK defaults this to false. -->
+    <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <!-- Suppress preview LSP API diagnostics -->
     <NoWarn>$(NoWarn);VSEXTPREVIEW_LSP;CEE0027;VSSDK007</NoWarn>
   </PropertyGroup>
@@ -32,9 +36,11 @@
   </ItemGroup>
 
   <ItemGroup>
-      <Content Include="Reqnroll.IdeSupport.VisualStudio.Extension.pkgdef">
+      <!-- The .pkgdef is now generated from the package's [Provide*] attributes
+           (GeneratePkgDefFile=true) and contributed via the VsPackage asset, so it
+           is no longer included as a hand-written Content file. -->
+      <Content Include="CHANGELOG.txt">
           <IncludeInVSIX>true</IncludeInVSIX>
-          <VSIXSubPath></VSIXSubPath>
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
   </ItemGroup>
