@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Diagnostics;
+namespace Reqnroll.IdeSupport.LSP.Server.Logging;
 
 /// <summary>
 /// <see cref="IDeveroomLogger"/> used by the LSP server process.
