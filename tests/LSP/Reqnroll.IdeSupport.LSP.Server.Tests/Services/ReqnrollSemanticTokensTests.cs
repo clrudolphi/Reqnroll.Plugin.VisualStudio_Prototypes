@@ -1,6 +1,6 @@
 using Reqnroll.IdeSupport.Common.Classification;
 using Reqnroll.IdeSupport.LSP.Core.Document;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Services;

@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+namespace Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 public class DeveroomTagParser : IDeveroomTagParser
 {

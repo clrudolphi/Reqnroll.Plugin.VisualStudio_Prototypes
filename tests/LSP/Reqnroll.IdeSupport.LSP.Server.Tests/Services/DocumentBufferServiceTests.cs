@@ -64,7 +64,7 @@ public class DocumentBufferServiceTests
         var sut = CreateSut();
         var uri = MakeUri();
         sut.Update(uri, 3, "Feature: X\n");
-        var tags = Array.Empty<Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments.DeveroomTag>();
+        var tags = Array.Empty<Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing.DeveroomTag>();
         sut.UpdateTags(uri, tags);
 
         sut.TryGet(uri, out var buffer).Should().BeTrue();
@@ -78,7 +78,7 @@ public class DocumentBufferServiceTests
     {
         var sut = CreateSut();
         var uri = MakeUri();
-        var tags = Array.Empty<Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments.DeveroomTag>();
+        var tags = Array.Empty<Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing.DeveroomTag>();
         sut.UpdateTags(uri, tags);
 
         sut.TryGet(uri, out var buffer).Should().BeTrue();

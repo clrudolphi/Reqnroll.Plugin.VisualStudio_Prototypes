@@ -2,10 +2,9 @@
 
 using Gherkin.Ast;
 using Reqnroll.IdeSupport.Common;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using System.IO;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+namespace Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 public class DeveroomGherkinParser
 {

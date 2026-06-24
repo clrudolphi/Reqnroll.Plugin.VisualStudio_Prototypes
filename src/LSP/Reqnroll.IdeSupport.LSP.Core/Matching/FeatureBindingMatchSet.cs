@@ -3,7 +3,7 @@
 using System.IO;
 using Gherkin.Ast;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 namespace Reqnroll.IdeSupport.LSP.Core.Matching;
 

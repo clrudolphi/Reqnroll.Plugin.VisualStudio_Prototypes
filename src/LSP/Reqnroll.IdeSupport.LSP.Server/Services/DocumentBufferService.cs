@@ -1,5 +1,5 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Services;
 

@@ -3,7 +3,7 @@ using Gherkin.Ast;
 using System;
 using System.Linq;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+namespace Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 public static class GherkinAstExtensions
 {

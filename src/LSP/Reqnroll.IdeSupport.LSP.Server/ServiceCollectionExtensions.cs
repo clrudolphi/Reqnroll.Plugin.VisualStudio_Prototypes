@@ -11,7 +11,7 @@ using Reqnroll.IdeSupport.LSP.Core.Editor.Scaffolding;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.DocumentOutline;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Folding;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Commenting;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Core.Rename;
 using Reqnroll.IdeSupport.LSP.Server.Configuration;

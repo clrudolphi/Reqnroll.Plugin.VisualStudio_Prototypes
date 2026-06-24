@@ -5,7 +5,7 @@ namespace Reqnroll.IdeSupport.LSP.Server.Services;
 
 /// <summary>
 /// Maintains a per-document cache of LSP semantic tokens encoded from Gherkin
-/// <see cref="Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments.DeveroomTag"/> instances.
+/// <see cref="Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing.DeveroomTag"/> instances.
 /// Encoding is deferred until <see cref="GetSemanticTokensAsync"/> is called; tags are
 /// read directly from <see cref="IDocumentBufferService"/>.
 /// </summary>

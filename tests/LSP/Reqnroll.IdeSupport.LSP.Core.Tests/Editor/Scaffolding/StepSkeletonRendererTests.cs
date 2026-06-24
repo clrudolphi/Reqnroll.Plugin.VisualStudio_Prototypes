@@ -5,7 +5,7 @@ using Gherkin.Ast;
 using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.LSP.Core.Discovery;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Scaffolding;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 using Xunit;
 using AwesomeAssertions;
 
@@ -233,7 +233,7 @@ public class StepSkeletonRendererTests
             _                   => "Given "
         };
         var gherkinStep = new DeveroomGherkinStep(
-            new Gherkin.Ast.Location(0, 0), keyword, StepKeywordType.Context,
+            new global::Gherkin.Ast.Location(0, 0), keyword, StepKeywordType.Context,
             text, argument: null!, StepKeyword.Given, block);
         return new UndefinedStepDescriptor(gherkinStep, text);
     }
