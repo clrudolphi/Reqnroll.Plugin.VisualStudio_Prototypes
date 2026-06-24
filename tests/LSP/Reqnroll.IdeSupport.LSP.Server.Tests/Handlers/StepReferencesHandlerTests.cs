@@ -6,6 +6,9 @@ using Reqnroll.IdeSupport.LSP.Core.Documents;
 
 using Reqnroll.IdeSupport.LSP.Core.Document;
 
+using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Documents;
+
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;

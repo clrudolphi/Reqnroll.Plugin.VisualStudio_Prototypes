@@ -23,6 +23,9 @@ global using Reqnroll.IdeSupport.LSP.Core.Documents;
 
 global using Reqnroll.IdeSupport.LSP.Core.Document;
 
+global using Reqnroll.IdeSupport.LSP.Core.Discovery;
+global using Reqnroll.IdeSupport.LSP.Core.Documents;
+
 global using Reqnroll.IdeSupport.VisualStudio.Monitoring;
 global using Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
 global using Reqnroll.VisualStudio.VsxStubs.ProjectSystem;

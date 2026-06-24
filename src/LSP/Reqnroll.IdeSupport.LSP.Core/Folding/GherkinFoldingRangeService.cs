@@ -1,4 +1,6 @@
 using Reqnroll.IdeSupport.LSP.Core.Documents;
+using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+
 
 using Reqnroll.IdeSupport.LSP.Core.Document;
 
