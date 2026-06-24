@@ -3,7 +3,7 @@
 using Reqnroll.IdeSupport.Common.Configuration;
 using System.Text.RegularExpressions;
 
-namespace Reqnroll.IdeSupport.LSP.Server;
+namespace Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 public static class ProcessHelper
 {

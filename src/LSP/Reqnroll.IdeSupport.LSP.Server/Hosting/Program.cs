@@ -25,7 +25,7 @@ using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
-namespace Reqnroll.IdeSupport.LSP.Server;
+namespace Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 public class Program
 {

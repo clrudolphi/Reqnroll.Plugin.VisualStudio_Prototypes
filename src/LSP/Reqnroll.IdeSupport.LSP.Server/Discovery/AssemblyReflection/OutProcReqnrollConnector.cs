@@ -5,7 +5,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.Common.ProjectSystem;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
 using Reqnroll.IdeSupport.LSP.Connector.Models;
-using Reqnroll.IdeSupport.LSP.Server;
+using Reqnroll.IdeSupport.LSP.Server.Hosting;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Discovery;

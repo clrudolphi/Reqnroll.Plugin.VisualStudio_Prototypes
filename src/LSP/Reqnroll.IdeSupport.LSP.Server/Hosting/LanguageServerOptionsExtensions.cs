@@ -7,7 +7,7 @@ using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
-namespace Reqnroll.IdeSupport.LSP.Server;
+namespace Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 /// <summary>
 /// Extension methods for configuring custom protocol handlers on <see cref="LanguageServerOptions"/>.

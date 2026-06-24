@@ -1,6 +1,6 @@
 using System;
 
-namespace Reqnroll.IdeSupport.LSP.Server;
+namespace Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 /// <summary>
 /// Carries the <c>--ide</c> identifier of the connecting client so that handlers can vary
