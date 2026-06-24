@@ -95,7 +95,7 @@ public sealed class DiscoverySteps
 
         _ctx.Registry = FixtureDiscovery.Discover();
         _ctx.Registry.Should().NotBeSameAs(
-            Reqnroll.IdeSupport.LSP.Core.Discovery.ProjectBindingRegistry.Invalid,
+            Reqnroll.IdeSupport.LSP.Core.Bindings.ProjectBindingRegistry.Invalid,
             "discovery should produce a populated registry");
     }
 

@@ -2,7 +2,7 @@
 
 using Gherkin.Ast;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 public class ParameterMatch
 {

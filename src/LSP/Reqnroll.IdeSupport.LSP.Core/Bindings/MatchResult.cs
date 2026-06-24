@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 public class MatchResult
 {

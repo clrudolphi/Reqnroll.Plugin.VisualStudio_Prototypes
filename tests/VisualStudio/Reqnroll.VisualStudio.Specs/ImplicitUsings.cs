@@ -15,7 +15,7 @@ global using Reqnroll.IdeSupport.Common.Diagnostics;
 global using Reqnroll.IdeSupport.Common.ProjectSystem;
 global using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
 global using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
-global using Reqnroll.IdeSupport.LSP.Core.Discovery;
+global using Reqnroll.IdeSupport.LSP.Core.Bindings;
 global using Reqnroll.IdeSupport.LSP.Connector.Models;
 global using Reqnroll.IdeSupport.VisualStudio.ProjectSystem;
 global using Reqnroll.VisualStudio.Specs.Support;

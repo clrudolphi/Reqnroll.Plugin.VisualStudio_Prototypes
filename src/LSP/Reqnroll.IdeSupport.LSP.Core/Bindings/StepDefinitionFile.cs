@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Reqnroll.IdeSupport.Common;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 public record CSharpStepDefinitionFile(FileDetails StepDefinitionPath, SyntaxTree Content)
     : StepDefinitionFile(StepDefinitionPath, Content);

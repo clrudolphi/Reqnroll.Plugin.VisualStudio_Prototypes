@@ -4,7 +4,7 @@ using Reqnroll.IdeSupport.LSP.Server.Workspace;
 namespace Reqnroll.IdeSupport.LSP.Server.Notifications;
 
 /// <summary>
-/// Published when a project's <see cref="Reqnroll.IdeSupport.LSP.Core.Discovery.ProjectBindingRegistry"/>
+/// Published when a project's <see cref="Reqnroll.IdeSupport.LSP.Core.Bindings.ProjectBindingRegistry"/>
 /// is replaced after a successful connector discovery run (e.g. triggered by a build or a
 /// <c>reqnroll.json</c> change).
 /// </summary>

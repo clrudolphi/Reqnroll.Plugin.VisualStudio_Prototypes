@@ -2,7 +2,7 @@ using Cucumber.TagExpressions;
 using Gherkin.Ast;
 using System.Linq;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery.TagExpressions;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings.TagExpressions;
 
 public static class TagExpressionExtensions
 {

@@ -1,5 +1,5 @@
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 /// <summary>
 /// Provides the current ProjectBindingRegistry and notifies when it is replaced.

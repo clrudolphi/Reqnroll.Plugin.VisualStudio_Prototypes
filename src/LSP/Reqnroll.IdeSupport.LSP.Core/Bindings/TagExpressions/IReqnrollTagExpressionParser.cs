@@ -1,6 +1,6 @@
 using Cucumber.TagExpressions;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery.TagExpressions;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings.TagExpressions;
 
 /// <summary>
 /// Defines a parser for tag expressions.

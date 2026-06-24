@@ -1,10 +1,10 @@
 #nullable disable
 
-using Reqnroll.IdeSupport.LSP.Core.Discovery.TagExpressions;
+using Reqnroll.IdeSupport.LSP.Core.Bindings.TagExpressions;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using Reqnroll.IdeSupport.LSP.Connector.Models;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 public class BindingImporter
 {

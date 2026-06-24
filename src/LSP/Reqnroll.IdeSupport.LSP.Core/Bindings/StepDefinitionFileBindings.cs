@@ -1,4 +1,4 @@
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 /// <summary>
 /// The complete set of bindings discovered in a single C# source file by Roslyn-based

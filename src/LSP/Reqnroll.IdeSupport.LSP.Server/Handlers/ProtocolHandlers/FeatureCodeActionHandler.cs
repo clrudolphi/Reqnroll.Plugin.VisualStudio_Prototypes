@@ -237,7 +237,7 @@ public sealed class FeatureCodeActionHandler : ICodeActionHandler
     private static string GetStepText(LSP.Core.Matching.StepBindingMatch step)
     {
         var item = step.Result.Items.FirstOrDefault(
-            i => i.Type == LSP.Core.Discovery.MatchResultType.Undefined);
+            i => i.Type == LSP.Core.Bindings.MatchResultType.Undefined);
         return item?.UndefinedStep?.StepText ?? string.Empty;
     }
 

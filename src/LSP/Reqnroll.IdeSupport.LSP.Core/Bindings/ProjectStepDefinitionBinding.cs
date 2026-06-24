@@ -3,7 +3,7 @@
 using Gherkin.Ast;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 public class ProjectStepDefinitionBinding : ProjectBinding
 {

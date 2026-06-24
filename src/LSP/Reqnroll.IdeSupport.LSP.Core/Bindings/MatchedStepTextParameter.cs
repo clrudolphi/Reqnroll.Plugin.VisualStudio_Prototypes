@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery;
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 public struct MatchedStepTextParameter
 {

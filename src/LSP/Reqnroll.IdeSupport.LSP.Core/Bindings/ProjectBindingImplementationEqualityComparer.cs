@@ -1,5 +1,5 @@
 
-namespace Reqnroll.IdeSupport.LSP.Core.Discovery; 
+namespace Reqnroll.IdeSupport.LSP.Core.Bindings; 
 public class ProjectBindingImplementationEqualityComparer : IEqualityComparer<ProjectBindingImplementation>
 {
     public bool Equals(ProjectBindingImplementation x, ProjectBindingImplementation y)

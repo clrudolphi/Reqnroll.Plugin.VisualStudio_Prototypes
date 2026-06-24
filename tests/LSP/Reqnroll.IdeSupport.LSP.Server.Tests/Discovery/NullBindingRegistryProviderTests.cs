@@ -1,4 +1,4 @@
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Discovery;
