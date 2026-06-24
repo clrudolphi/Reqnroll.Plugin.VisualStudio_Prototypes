@@ -5,7 +5,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 
 /// <summary>
 /// Handles <c>textDocument/semanticTokens/full</c>, <c>textDocument/semanticTokens/full/delta</c>,
@@ -29,7 +29,7 @@ public class SemanticTokensHandler
 
     // ── Full ──────────────────────────────────────────────────────────────────
 
-    public async Task<SemanticTokens?> HandleAsync(
+    public async Task<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?> HandleAsync(
         SemanticTokensParams request,
         CancellationToken cancellationToken)
     {
@@ -46,7 +46,7 @@ public class SemanticTokensHandler
     // ── Delta ─────────────────────────────────────────────────────────────────
     // We don't maintain delta state; return the full token set wrapped in SemanticTokensFullOrDelta.
 
-    public async Task<SemanticTokensFullOrDelta?> HandleAsync(
+    public async Task<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokensFullOrDelta?> HandleAsync(
         SemanticTokensDeltaParams request,
         CancellationToken cancellationToken)
     {
@@ -59,13 +59,13 @@ public class SemanticTokensHandler
         var tokens = await _semanticTokenService.GetSemanticTokensAsync(uri, version, cancellationToken)
                                                 .ConfigureAwait(false);
 
-        return tokens is null ? null : new SemanticTokensFullOrDelta(tokens);
+        return tokens is null ? null : new global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokensFullOrDelta(tokens);
     }
 
     // ── Range ─────────────────────────────────────────────────────────────────
     // Return all tokens; the client will filter by range.
 
-    public async Task<SemanticTokens?> HandleAsync(
+    public async Task<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?> HandleAsync(
         SemanticTokensRangeParams request,
         CancellationToken cancellationToken)
     {

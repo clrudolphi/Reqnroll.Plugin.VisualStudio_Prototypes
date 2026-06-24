@@ -1,7 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Services;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 
 /// <summary>
 /// Maintains a per-document cache of LSP semantic tokens encoded from Gherkin
@@ -18,7 +18,7 @@ public interface ISemanticTokenService
     /// Returns the cached encoded token data for the requested document version,
     /// or <see langword="null"/> when no data is available yet.
     /// </summary>
-    Task<SemanticTokens?> GetSemanticTokensAsync(DocumentUri uri, int version, CancellationToken cancellationToken = default);
+    Task<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?> GetSemanticTokensAsync(DocumentUri uri, int version, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Evicts any cached token result for <paramref name="uri"/>, forcing the next

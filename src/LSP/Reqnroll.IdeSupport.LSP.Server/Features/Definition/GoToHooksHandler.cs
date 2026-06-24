@@ -16,7 +16,7 @@ using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.Definition;
 
 /// <summary>
 /// Handles the custom <c>reqnroll/goToHooks</c> request (F17 — Hook Navigation).

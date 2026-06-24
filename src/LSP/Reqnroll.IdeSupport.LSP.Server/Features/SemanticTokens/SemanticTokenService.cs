@@ -3,8 +3,9 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Document;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Server.Services;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Services;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 
 /// <summary>
 /// Maps <see cref="DeveroomTag"/> instances to LSP semantic token integer tuples
@@ -20,7 +21,7 @@ public sealed class SemanticTokenService : ISemanticTokenService
     private readonly IDeveroomLogger         _logger;
 
     // key: (uri, version)  value: encoded token data
-    private readonly ConcurrentDictionary<(DocumentUri, int), SemanticTokens> _cache = new();
+    private readonly ConcurrentDictionary<(DocumentUri, int), global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens> _cache = new();
 
     // ── ISemanticTokenService.Legend ──────────────────────────────────────────
     /// <inheritdoc/>
@@ -36,28 +37,28 @@ public sealed class SemanticTokenService : ISemanticTokenService
     }
 
     // ── ISemanticTokenService ─────────────────────────────────────────────────
-    public Task<SemanticTokens?> GetSemanticTokensAsync(
+    public Task<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?> GetSemanticTokensAsync(
         DocumentUri uri, int version, CancellationToken cancellationToken = default)
     {
         if (_cache.TryGetValue((uri, version), out var tokens))
         {
             _logger.LogVerbose($"SemanticTokenService: cache hit for {uri} v{version}");
-            return Task.FromResult<SemanticTokens?>(tokens);
+            return Task.FromResult<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?>(tokens);
         }
 
         // Cache miss – encode from the tags already stored in the document buffer.
         if (!_documentBufferService.TryGet(uri, out var buffer) || buffer?.Tags is not { } tags || tags.Count == 0)
         {
             _logger.LogVerbose($"SemanticTokenService: no tags available for {uri} v{version}");
-            return Task.FromResult<SemanticTokens?>(null);
+            return Task.FromResult<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?>(null);
         }
 
         var encoded = Encode(tags);
-        tokens = new SemanticTokens { Data = [.. encoded], ResultId = $"{uri}@{version}" };
+        tokens = new global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens { Data = [.. encoded], ResultId = $"{uri}@{version}" };
         _cache[(uri, version)] = tokens;
         PurgePriorVersions(uri, version);
         _logger.LogInfo($"SemanticTokenService: encoded {encoded.Count / 5} tokens for {uri} v{version}");
-        return Task.FromResult<SemanticTokens?>(tokens);
+        return Task.FromResult<global::OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokens?>(tokens);
     }
 
     /// <summary>

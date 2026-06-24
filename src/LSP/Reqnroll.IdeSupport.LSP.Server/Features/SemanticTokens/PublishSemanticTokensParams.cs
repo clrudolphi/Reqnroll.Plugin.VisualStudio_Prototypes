@@ -1,6 +1,6 @@
 using System;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Protocol;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 
 /// <summary>
 /// Payload for the <c>reqnroll/semanticTokens</c> server-to-client notification.

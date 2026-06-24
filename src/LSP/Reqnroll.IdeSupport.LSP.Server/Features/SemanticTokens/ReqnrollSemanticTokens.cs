@@ -2,7 +2,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.Common.Classification;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Services;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 
 /// <summary>
 /// The fixed Reqnroll semantic-token legend and the <see cref="DeveroomTag"/>→token mapping.
