@@ -4,6 +4,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.LSP.Core.Bindings;
+
+using Reqnroll.IdeSupport.LSP.Core.Discovery;
+
 using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 namespace Reqnroll.IdeSupport.LSP.Core.Scaffolding;

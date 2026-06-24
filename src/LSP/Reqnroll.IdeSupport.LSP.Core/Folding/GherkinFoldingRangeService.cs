@@ -1,4 +1,7 @@
 using Reqnroll.IdeSupport.LSP.Core.Documents;
+
+using Reqnroll.IdeSupport.LSP.Core.Document;
+
 using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
 namespace Reqnroll.IdeSupport.LSP.Core.Folding;

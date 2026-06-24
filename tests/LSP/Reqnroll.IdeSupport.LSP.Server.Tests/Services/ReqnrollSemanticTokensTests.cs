@@ -3,6 +3,11 @@ using Reqnroll.IdeSupport.LSP.Core.Documents;
 using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 using Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 
+using Reqnroll.IdeSupport.LSP.Core.Document;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
+using Reqnroll.IdeSupport.LSP.Server.Services;
+
+
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Services;
 
 public class ReqnrollSemanticTokensTests

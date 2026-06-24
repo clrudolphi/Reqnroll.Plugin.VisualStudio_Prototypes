@@ -8,6 +8,7 @@ using Reqnroll.IdeSupport.LSP.Core.Completions.Matching;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
 
+
 namespace Reqnroll.IdeSupport.LSP.Core.Completions;
 
 public interface ICompletionService
