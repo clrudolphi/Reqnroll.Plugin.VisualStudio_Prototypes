@@ -9,7 +9,7 @@ using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Notifications;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 
 /// <summary>
 /// Handles <c>workspace/didChangeWatchedFiles</c> notifications.

@@ -1,7 +1,7 @@
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Services;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 
 public record DocumentBuffer(DocumentUri Uri, int? Version, string Text, IReadOnlyCollection<DeveroomTag>? Tags = null);
 

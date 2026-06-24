@@ -9,6 +9,7 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Commenting;
 using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
+using Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;

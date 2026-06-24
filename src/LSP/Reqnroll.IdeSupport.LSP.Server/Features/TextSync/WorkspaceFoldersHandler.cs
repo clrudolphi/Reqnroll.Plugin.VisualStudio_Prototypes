@@ -5,7 +5,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
-namespace Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
+namespace Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 
 /// <summary>
 /// Handles <c>workspace/didChangeWorkspaceFolders</c> notifications.
