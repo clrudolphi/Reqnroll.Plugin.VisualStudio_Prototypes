@@ -1,4 +1,4 @@
-using Reqnroll.IdeSupport.LSP.Core.Document;
+using Reqnroll.IdeSupport.LSP.Core.Documents;
 using System.Collections.Generic;
 
 namespace Reqnroll.VisualStudio.VsxStubs.LspStubs;

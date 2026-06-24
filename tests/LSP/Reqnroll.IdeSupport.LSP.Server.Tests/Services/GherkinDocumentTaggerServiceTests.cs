@@ -1,6 +1,6 @@
 using Reqnroll.IdeSupport.Common.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
@@ -99,7 +99,7 @@ public class GherkinDocumentTaggerServiceTests
 
         var expectedTags = (IReadOnlyCollection<DeveroomTag>)Array.Empty<DeveroomTag>();
         _tagParser.Parse(
-                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
                       Arg.Any<ProjectBindingRegistry>())
                   .Returns(expectedTags);
 
@@ -107,7 +107,7 @@ public class GherkinDocumentTaggerServiceTests
         var result = await sut.ParseAsync(FeatureUri, version: 5);
         result.Should().BeSameAs(expectedTags);
         _tagParser.Received(1).Parse(
-            Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+            Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
             Arg.Any<ProjectBindingRegistry>());
         _bindingMatchService.Received(1).Store(
             Arg.Is<FeatureBindingMatchSet>(s => s.DocumentId == FeatureUri.ToString()));
@@ -123,7 +123,7 @@ public class GherkinDocumentTaggerServiceTests
         var buf = new DocumentBuffer(FeatureUri, 1, "Feature: X\n");
         DocumentBuffer? _;
         _bufferService.TryGet(FeatureUri, out _).Returns(x => { x[1] = buf; return true; });
-        _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+        _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
                          Arg.Any<ProjectBindingRegistry>())
                   .Returns(Array.Empty<DeveroomTag>());
 
@@ -144,7 +144,7 @@ public class GherkinDocumentTaggerServiceTests
         var buf = new DocumentBuffer(FeatureUri, 1, "Feature: X\n");
         DocumentBuffer? _;
         _bufferService.TryGet(FeatureUri, out _).Returns(x => { x[1] = buf; return true; });
-        _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+        _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
                          Arg.Any<ProjectBindingRegistry>())
                   .Returns(Array.Empty<DeveroomTag>());
 
@@ -169,7 +169,7 @@ public class GherkinDocumentTaggerServiceTests
 
         var expectedTags = (IReadOnlyCollection<DeveroomTag>)Array.Empty<DeveroomTag>();
         _tagParser.Parse(
-                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
                       Arg.Any<ProjectBindingRegistry>())
                   .Returns(expectedTags);
 
@@ -196,7 +196,7 @@ public class GherkinDocumentTaggerServiceTests
         await CreateSut().ScanClosedFileAsync(FeatureUri, "Feature: Open\n", project);
 
         _tagParser.DidNotReceive().Parse(
-            Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+            Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
             Arg.Any<ProjectBindingRegistry>());
         _bindingMatchService.DidNotReceive().Store(Arg.Any<FeatureBindingMatchSet>());
     }
@@ -215,7 +215,7 @@ public class GherkinDocumentTaggerServiceTests
 
         var expectedTags = (IReadOnlyCollection<DeveroomTag>)Array.Empty<DeveroomTag>();
         _tagParser.Parse(
-                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+                      Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
                       Arg.Any<ProjectBindingRegistry>())
                   .Returns(expectedTags);
 
@@ -246,7 +246,7 @@ public class GherkinDocumentTaggerServiceTests
             // The buffer was already removed (close path) → closed-file scan proceeds.
             DocumentBuffer? none;
             _bufferService.TryGet(uri, out none).Returns(x => { x[1] = (DocumentBuffer?)null; return false; });
-            _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Document.IGherkinTextSnapshot>(),
+            _tagParser.Parse(Arg.Any<Reqnroll.IdeSupport.LSP.Core.Documents.IGherkinTextSnapshot>(),
                              Arg.Any<ProjectBindingRegistry>())
                       .Returns(Array.Empty<DeveroomTag>());
 

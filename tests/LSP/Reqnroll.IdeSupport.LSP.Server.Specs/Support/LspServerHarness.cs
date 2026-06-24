@@ -6,7 +6,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client;             // ILangu
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;// SemanticTokensWorkspaceCapability
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;             // InitializeResult
 using OmniSharp.Extensions.LanguageServer.Server;                      // LanguageServer factory
-using Reqnroll.IdeSupport.LSP.Server;
+using Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Specs.Support;
 

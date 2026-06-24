@@ -1,7 +1,7 @@
 using MediatR;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using Reqnroll.IdeSupport.Common.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Pipeline;
 using Reqnroll.IdeSupport.LSP.Server.Services;

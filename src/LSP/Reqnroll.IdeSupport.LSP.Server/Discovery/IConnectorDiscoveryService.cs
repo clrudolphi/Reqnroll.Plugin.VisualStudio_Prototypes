@@ -1,5 +1,5 @@
 using Reqnroll.IdeSupport.Common.ProjectSystem;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Discovery;
 

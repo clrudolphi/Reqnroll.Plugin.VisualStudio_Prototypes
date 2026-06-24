@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Reqnroll.IdeSupport.LSP.Server.Document;
+using Reqnroll.IdeSupport.LSP.Server.Features.FindUnusedStepDefs;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;

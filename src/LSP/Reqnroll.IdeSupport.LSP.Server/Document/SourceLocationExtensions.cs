@@ -3,7 +3,7 @@
 using System.IO;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Document;

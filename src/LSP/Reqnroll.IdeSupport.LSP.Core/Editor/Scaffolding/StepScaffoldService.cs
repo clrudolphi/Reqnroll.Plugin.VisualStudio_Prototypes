@@ -1,7 +1,7 @@
 #nullable enable
 
 using Reqnroll.IdeSupport.Common.Configuration;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 
 namespace Reqnroll.IdeSupport.LSP.Core.Editor.Scaffolding;

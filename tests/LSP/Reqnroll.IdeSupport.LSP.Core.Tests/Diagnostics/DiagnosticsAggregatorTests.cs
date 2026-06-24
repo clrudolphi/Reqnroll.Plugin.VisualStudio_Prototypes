@@ -1,7 +1,7 @@
 using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Document;
+using Reqnroll.IdeSupport.LSP.Core.Documents;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.VisualStudio.VsxStubs.LspStubs;
 

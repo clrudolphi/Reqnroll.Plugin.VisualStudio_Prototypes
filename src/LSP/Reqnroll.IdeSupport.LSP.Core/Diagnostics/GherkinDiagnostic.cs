@@ -1,4 +1,4 @@
-using Reqnroll.IdeSupport.LSP.Core.Document;
+using Reqnroll.IdeSupport.LSP.Core.Documents;
 
 namespace Reqnroll.IdeSupport.LSP.Core.Diagnostics;
 

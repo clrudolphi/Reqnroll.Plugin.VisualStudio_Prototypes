@@ -1,5 +1,5 @@
 using Reqnroll.IdeSupport.LSP.Server.Document;
-using Reqnroll.IdeSupport.LSP.Core.Document;
+using Reqnroll.IdeSupport.LSP.Core.Documents;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 

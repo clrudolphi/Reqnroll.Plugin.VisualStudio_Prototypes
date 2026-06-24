@@ -1,11 +1,12 @@
 using AwesomeAssertions;
 using NSubstitute;
 using Reqnroll.IdeSupport.Common.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
+using Reqnroll.IdeSupport.LSP.Server.Features.FindUnusedStepDefs;
 using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
@@ -95,7 +96,7 @@ public class FindUnusedStepDefinitionsHandlerTests
         var snapshot = new LspTextSnapshot(
             "file:///any.feature", 1,
             "Feature: F\nScenario: S\n    Given x\n");
-        var range  = Reqnroll.IdeSupport.LSP.Core.Document.GherkinRange.FromPoint(snapshot, 33, 1);
+        var range  = Reqnroll.IdeSupport.LSP.Core.Documents.GherkinRange.FromPoint(snapshot, 33, 1);
         var item   = MatchResultItem.CreateMatch(binding, ParameterMatch.NotMatch);
         var result = MatchResult.CreateMultiMatch(new[] { item });
         return new StepBindingMatch("file:///any.feature", range, result);

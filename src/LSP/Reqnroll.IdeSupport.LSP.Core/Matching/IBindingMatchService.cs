@@ -1,6 +1,6 @@
 #nullable enable
 
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
+using Reqnroll.IdeSupport.LSP.Core.Bindings;
 
 namespace Reqnroll.IdeSupport.LSP.Core.Matching;
 
