@@ -16,12 +16,9 @@ global using Reqnroll.IdeSupport.Common.ProjectSystem.Settings;
 global using Reqnroll.IdeSupport.LSP.Core.Bindings;
 global using Reqnroll.IdeSupport.LSP.Core.Bindings.TagExpressions;
 
-global using Reqnroll.IdeSupport.LSP.Core.Discovery;
-global using Reqnroll.IdeSupport.LSP.Core.Discovery.TagExpressions;
 
 global using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
-global using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
 global using Reqnroll.IdeSupport.LSP.Connector.Models;
 global using Reqnroll.VisualStudio.VsxStubs;

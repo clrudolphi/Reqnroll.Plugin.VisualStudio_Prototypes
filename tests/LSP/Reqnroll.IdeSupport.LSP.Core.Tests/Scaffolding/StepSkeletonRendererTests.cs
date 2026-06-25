@@ -4,12 +4,9 @@ using Gherkin;
 using Gherkin.Ast;
 using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.LSP.Core.Bindings;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Scaffolding;
+using Reqnroll.IdeSupport.LSP.Core.Scaffolding;
 using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
-using Reqnroll.IdeSupport.LSP.Core.Scaffolding;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
 using Xunit;
 using AwesomeAssertions;

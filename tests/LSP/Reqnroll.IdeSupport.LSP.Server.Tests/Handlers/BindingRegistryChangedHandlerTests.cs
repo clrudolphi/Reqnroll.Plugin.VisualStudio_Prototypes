@@ -9,6 +9,7 @@ using Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using Reqnroll.IdeSupport.LSP.Server.Tests.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
+using Reqnroll.IdeSupport.LSP.Server.Features.CodeLens;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;
 

@@ -263,7 +263,6 @@ namespace TestProject
     {
         // Class scope @ui AND method scope @smoke -> only matches when both tags are present.
         var content = @"
-using Reqnroll;
 namespace TestProject
 {
     [Binding]
@@ -350,7 +349,6 @@ namespace TestProject
     public async Task Discovers_bindings_in_file_scoped_namespace()
     {
         var content = @"
-using Reqnroll;
 namespace TestProject;
 
 [Binding]
@@ -370,7 +368,6 @@ public class Steps
     public async Task Discovers_bindings_without_namespace()
     {
         var content = @"
-using Reqnroll;
 [Binding]
 public class Steps
 {
@@ -393,7 +390,6 @@ public class Steps
         // GivenWebAttribute derives from GivenAttribute, but the parser only matches by attribute
         // name (no semantic model), so [GivenWeb] is not recognized as a Given step definition.
         var content = @"
-using Reqnroll;
 namespace TestProject
 {
     public class GivenWebAttribute : GivenAttribute

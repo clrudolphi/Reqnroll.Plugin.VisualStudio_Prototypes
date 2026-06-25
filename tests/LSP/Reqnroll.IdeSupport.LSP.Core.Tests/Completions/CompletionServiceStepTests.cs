@@ -1,13 +1,10 @@
 #nullable disable
 using Gherkin;
 using NSubstitute;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Completions;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Completions.Matching;
-using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
-
 using Reqnroll.IdeSupport.LSP.Core.Completions;
 using Reqnroll.IdeSupport.LSP.Core.Completions.Matching;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
+
 
 using GherkinLocation = Gherkin.Ast.Location;
 

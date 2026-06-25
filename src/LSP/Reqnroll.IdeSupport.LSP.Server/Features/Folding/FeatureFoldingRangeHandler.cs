@@ -2,10 +2,9 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.Common.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Folding;
+using Reqnroll.IdeSupport.LSP.Core.Folding;
 using Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 
-using Reqnroll.IdeSupport.LSP.Core.Folding;
 
 using Reqnroll.IdeSupport.LSP.Server.Services;
 

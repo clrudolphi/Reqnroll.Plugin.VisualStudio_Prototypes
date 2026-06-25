@@ -20,7 +20,6 @@ using Reqnroll.IdeSupport.LSP.Core.DocumentOutline;
 using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.LSP.Server.Configuration;
 using Reqnroll.IdeSupport.LSP.Server.Pipeline;
-using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;

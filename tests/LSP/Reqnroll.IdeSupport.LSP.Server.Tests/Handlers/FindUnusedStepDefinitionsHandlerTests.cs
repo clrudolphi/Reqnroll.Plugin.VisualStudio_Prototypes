@@ -3,17 +3,14 @@ using NSubstitute;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Bindings;
 
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
 
 using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
 
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
 
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Features.FindUnusedStepDefs;
-using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Services;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;

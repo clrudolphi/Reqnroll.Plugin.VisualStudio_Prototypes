@@ -6,16 +6,12 @@ using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.LSP.Core.Bindings;
 using Reqnroll.IdeSupport.LSP.Core.Documents;
 
-using Reqnroll.IdeSupport.LSP.Core.Document;
 
-using Reqnroll.IdeSupport.LSP.Core.Discovery;
-using Reqnroll.IdeSupport.LSP.Core.Documents;
 
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Server.Discovery;
 using Reqnroll.IdeSupport.LSP.Server.Document;
 using Reqnroll.IdeSupport.LSP.Server.Features.References;
-using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Workspace;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;

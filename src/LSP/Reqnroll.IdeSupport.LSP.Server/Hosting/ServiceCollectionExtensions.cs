@@ -5,21 +5,14 @@ using Reqnroll.IdeSupport.Common.Configuration;
 using Reqnroll.IdeSupport.Common.Diagnostics;
 using Reqnroll.IdeSupport.Common.ProjectSystem.Configuration;
 using Reqnroll.IdeSupport.LSP.Core.Diagnostics;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Completions;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Completions.Matching;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Scaffolding;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.DocumentOutline;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Folding;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Commenting;
-using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
-
 using Reqnroll.IdeSupport.LSP.Core.Completions;
 using Reqnroll.IdeSupport.LSP.Core.Completions.Matching;
 using Reqnroll.IdeSupport.LSP.Core.Scaffolding;
 using Reqnroll.IdeSupport.LSP.Core.DocumentOutline;
 using Reqnroll.IdeSupport.LSP.Core.Folding;
 using Reqnroll.IdeSupport.LSP.Core.Commenting;
-using Reqnroll.IdeSupport.LSP.Core.Editor.Services.Parsing.GherkinDocuments;
+using Reqnroll.IdeSupport.LSP.Core.Gherkin.Parsing;
+
 
 using Reqnroll.IdeSupport.LSP.Core.Matching;
 using Reqnroll.IdeSupport.LSP.Core.Rename;
@@ -32,7 +25,6 @@ using Reqnroll.IdeSupport.LSP.Server.Features.Commenting;
 using Reqnroll.IdeSupport.LSP.Server.Features.DocumentOutline;
 using Reqnroll.IdeSupport.LSP.Server.Features.Folding;
 using Reqnroll.IdeSupport.LSP.Server.Features.Formatting;
-using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Features.TextSync;
 using Reqnroll.IdeSupport.LSP.Server.Features.CodeLens;
 using Reqnroll.IdeSupport.LSP.Server.Features.FindUnusedStepDefs;

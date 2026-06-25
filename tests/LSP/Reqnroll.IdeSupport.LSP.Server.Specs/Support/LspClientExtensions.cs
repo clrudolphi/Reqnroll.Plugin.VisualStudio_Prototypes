@@ -4,6 +4,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Reqnroll.IdeSupport.LSP.Server.Features.References;
 using Reqnroll.IdeSupport.LSP.Server.Protocol;
+using Reqnroll.IdeSupport.LSP.Server.Features.Definition;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Specs.Support;
 

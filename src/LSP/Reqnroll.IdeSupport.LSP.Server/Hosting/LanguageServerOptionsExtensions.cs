@@ -9,7 +9,6 @@ using Reqnroll.IdeSupport.LSP.Server.Features.Commenting;
 using Reqnroll.IdeSupport.LSP.Server.Features.DocumentOutline;
 using Reqnroll.IdeSupport.LSP.Server.Features.Folding;
 using Reqnroll.IdeSupport.LSP.Server.Features.Formatting;
-using Reqnroll.IdeSupport.LSP.Server.Handlers.ProtocolHandlers;
 using Reqnroll.IdeSupport.LSP.Server.Features.CodeLens;
 using Reqnroll.IdeSupport.LSP.Server.Features.Completions;
 using Reqnroll.IdeSupport.LSP.Server.Features.Definition;

@@ -7,6 +7,8 @@ using Reqnroll.IdeSupport.LSP.Server;
 using Reqnroll.IdeSupport.LSP.Server.Pipeline;
 using Reqnroll.IdeSupport.LSP.Server.Protocol;
 using Reqnroll.IdeSupport.LSP.Server.Services;
+using Reqnroll.IdeSupport.LSP.Server.Features.SemanticTokens;
+using Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Handlers;
 
