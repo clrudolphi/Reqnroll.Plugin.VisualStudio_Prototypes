@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Reqnroll.IdeSupport.Common;
@@ -28,6 +29,7 @@ public sealed class ReqnrollPluginPackage : AsyncPackage
 
     private static readonly TraceSource TraceSource = new("ReqnrollPluginPackage", SourceLevels.Information);
     private SynchronousFileLogger _fileLogger = null!;
+    private IAnalyticsTransmitter? _analyticsTransmitter;
 
     protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
     {
@@ -38,6 +40,14 @@ public sealed class ReqnrollPluginPackage : AsyncPackage
 
         TraceSource.TraceInformation("Package initialised; waiting for solution load.");
         _fileLogger.LogInfo("Waiting for solution load...");
+
+        // Resolve analytics transmitter for telemetry flush on shutdown.
+        // Resolved early so it's available for the full package lifecycle.
+        {
+            var sp = await GetServiceAsync(typeof(SComponentModel)) as IServiceProvider;
+            if (sp != null)
+                _analyticsTransmitter = VsUtils.ResolveMefDependency<IAnalyticsTransmitter>(sp);
+        }
 
         await WaitForSolutionLoadAsync(cancellationToken);
 
@@ -170,5 +180,14 @@ public sealed class ReqnrollPluginPackage : AsyncPackage
         }
 
         TraceSource.TraceInformation("WaitForSolutionLoadAsync: max attempts reached, proceeding anyway.");
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && _analyticsTransmitter is IAsyncDisposable d)
+        {
+            ThreadHelper.JoinableTaskFactory.Run(() => d.DisposeAsync().AsTask());
+        }
+        base.Dispose(disposing);
     }
 }

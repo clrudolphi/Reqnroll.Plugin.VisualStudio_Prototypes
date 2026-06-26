@@ -1,10 +1,9 @@
-﻿#nullable enable
+﻿using System.ComponentModel.Composition;
+#nullable enable
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Reqnroll.IdeSupport.Common.Analytics;
 using Reqnroll.IdeSupport.VisualStudio.Diagnostics;
-using System.ComponentModel.Composition;
-using System.IO;
 
 namespace Reqnroll.IdeSupport.VisualStudio.Analytics;
 

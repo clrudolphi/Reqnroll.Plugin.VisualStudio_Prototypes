@@ -1,13 +1,15 @@
 #nullable disable
-using System;
-using System.Linq;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility;
 
 namespace Reqnroll.IdeSupport.Common.Tests.Analytics;
 
 public class AnalyticsTransmitterTests
 {
-    private IAnalyticsTransmitterSink analyticsTransmitterSinkStub;
-    private IEnableAnalyticsChecker enableAnalyticsCheckerStub;
+    private InMemoryTelemetryChannel _telemetryChannel;
+    private IEnableAnalyticsChecker _enableAnalyticsCheckerStub;
 
     [Fact]
     public void Should_NotSendAnalytics_WhenDisabled()
@@ -17,8 +19,8 @@ public class AnalyticsTransmitterTests
 
         sut.TransmitEvent(Substitute.For<IAnalyticsEvent>());
 
-        enableAnalyticsCheckerStub.Received(1).IsEnabled();
-        analyticsTransmitterSinkStub.DidNotReceive().TransmitEvent(Arg.Any<IAnalyticsEvent>());
+        _enableAnalyticsCheckerStub.Received(1).IsEnabled();
+        _telemetryChannel.SentTelemtries.Should().BeEmpty();
     }
 
     [Fact]
@@ -29,8 +31,8 @@ public class AnalyticsTransmitterTests
 
         sut.TransmitEvent(Substitute.For<IAnalyticsEvent>());
 
-        enableAnalyticsCheckerStub.Received(1).IsEnabled();
-        analyticsTransmitterSinkStub.Received(1).TransmitEvent(Arg.Any<IAnalyticsEvent>());
+        _enableAnalyticsCheckerStub.Received(1).IsEnabled();
+        _telemetryChannel.SentTelemtries.Should().HaveCount(1);
     }
 
     [Theory]
@@ -44,23 +46,74 @@ public class AnalyticsTransmitterTests
 
         sut.TransmitEvent(new GenericEvent(eventName));
 
-        analyticsTransmitterSinkStub.Received(1).TransmitEvent(Arg.Is<IAnalyticsEvent>(ae => ae.EventName == eventName));
+        _telemetryChannel.SentTelemtries.Should().HaveCount(1);
+        _telemetryChannel.SentTelemtries.Single()
+            .Should().BeOfType<EventTelemetry>()
+            .Which.Name.Should().Be(eventName);
+    }
+
+    [Fact]
+    public async Task Should_FlushOnDispose()
+    {
+        var sut = CreateSut();
+
+        await sut.DisposeAsync();
+
+        _telemetryChannel.IsFlushed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Should_NotThrow_WhenAppInsightsFails()
+    {
+        var sut = CreateSut();
+        GivenAnalyticsEnabled();
+
+        _telemetryChannel.ThrowOnSend = true;
+
+        var exception = Record.Exception(() => sut.TransmitEvent(Substitute.For<IAnalyticsEvent>()));
+
+        Assert.Null(exception);
     }
 
     private void GivenAnalyticsEnabled()
     {
-        enableAnalyticsCheckerStub.IsEnabled().Returns(true);
+        _enableAnalyticsCheckerStub.IsEnabled().Returns(true);
     }
 
     private void GivenAnalyticsDisabled()
     {
-        enableAnalyticsCheckerStub.IsEnabled().Returns(false);
+        _enableAnalyticsCheckerStub.IsEnabled().Returns(false);
     }
 
-    public AnalyticsTransmitter CreateSut()
+    private AnalyticsTransmitter CreateSut()
     {
-        analyticsTransmitterSinkStub = Substitute.For<IAnalyticsTransmitterSink>();
-        enableAnalyticsCheckerStub = Substitute.For<IEnableAnalyticsChecker>();
-        return new AnalyticsTransmitter(analyticsTransmitterSinkStub, enableAnalyticsCheckerStub);
+        _enableAnalyticsCheckerStub = Substitute.For<IEnableAnalyticsChecker>();
+        _telemetryChannel = new InMemoryTelemetryChannel();
+        var config = new TelemetryConfiguration
+        {
+            TelemetryChannel = _telemetryChannel,
+            ConnectionString = $"InstrumentationKey={Guid.NewGuid():N}"
+        };
+        var telemetryClient = new TelemetryClient(config);
+        return new AnalyticsTransmitter(telemetryClient, _enableAnalyticsCheckerStub);
     }
+}
+
+public class InMemoryTelemetryChannel : ITelemetryChannel
+{
+    public List<ITelemetry> SentTelemtries { get; } = new();
+    public bool IsFlushed { get; private set; }
+    public bool ThrowOnSend { get; set; }
+    public bool? DeveloperMode { get; set; }
+    public string EndpointAddress { get; set; }
+
+    public void Send(ITelemetry item)
+    {
+        if (ThrowOnSend)
+            throw new InvalidOperationException("Simulated AppInsights failure");
+        SentTelemtries.Add(item);
+    }
+
+    public void Flush() => IsFlushed = true;
+    public void Dispose() { }
 }

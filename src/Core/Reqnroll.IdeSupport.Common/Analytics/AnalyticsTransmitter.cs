@@ -1,7 +1,4 @@
-#nullable enable
-using Reqnroll;
-using Reqnroll.IdeSupport.Common.Diagnostics;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -10,6 +7,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Reqnroll.IdeSupport.Common.Diagnostics;
 
 namespace Reqnroll.IdeSupport.Common.Analytics;
 
