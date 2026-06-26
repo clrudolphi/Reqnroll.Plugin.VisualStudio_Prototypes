@@ -273,4 +273,5 @@ launchSettings.json
 /.ncrunch/cache/
 *.binlog
 
-.serena/**/*.*
+/.serena
+/.hermes
