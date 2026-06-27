@@ -1,6 +1,6 @@
 # Performance Verification — Implementation Plan
 
-> **Status:** Draft for review
+> **Status:** Largely implemented — see _Implementation status_ below
 > **Audience:** Core team contributors
 > **Implements:** [§9 Performance Verification](LSP-IDE-Support-Architecture.md#performance-verification),
 > tasks [T1, T2, T3](LSP-IDE-Support-Architecture.md#11-non-feature-engineering-tasks)
@@ -8,6 +8,27 @@
 > benchmarks) and **Layer 4** (field instrumentation). Layers 1 (micro-benchmarks) and 3 (CI
 > regression gating) remain deferred and are out of scope here, except where this plan deliberately
 > leaves a seam for Layer 3 to plug into later.
+
+---
+
+## Implementation status (as built)
+
+| Phase / item | Status | Where |
+|---|---|---|
+| **Layer 4 — field instrumentation (T3)** | ✅ implemented | `LSP.Server/Diagnostics/Performance/` (`IOperationDurationRecorder`, sampled `PerfSample`); wired into semanticTokens (manual route), completion, definition, diagnostics push |
+| **T2 — corpus + structural-fingerprint drift test** | ✅ implemented | `tests/Performance/Corpus/` (committed: 50 features, 64 patterns, 1350 steps, 950/200/200 mix); `Benchmarks.Core/Corpus/`; `CorpusDriftTests` |
+| **T1 — harness + interactive scenarios** | ✅ implemented | `Benchmarks.Core/Harness/BenchmarkLspHarness`, `Scenarios/InteractiveScenarios`; `Benchmarks` exe `run` command |
+| **T1 — latency percentiles, reporters, reference-machine gating** | ✅ implemented | `Benchmarks.Core/Latency/`, `Reporting/`; JSON output is the Layer 3 baseline format |
+| **T1 — cold-start batch scenario** | ✅ implemented | `Benchmarks.Core/Scenarios/BatchScenarios.ColdStartScanAsync` |
+| **T1 — Roslyn / reflection discovery batch scenarios** | ⏳ deferred | reported as **skipped (not faked)** until a *built* corpus bindings assembly + connector is wired; see A3.2/§A1 |
+| Binding-dependent interactive numbers (definition cache-hit, step completion) | ⚠️ run, but against an unprimed registry | representative bound-state numbers need the same built corpus assembly; the harness + measurement are correct |
+| Layer 1 micro-benchmarks, Layer 3 CI gating | ⏳ deferred by design | seams left (JSON baseline format exists for Layer 3) |
+
+**Honest gap:** the one piece not yet built is a **buildable corpus bindings assembly** (a `.csproj`
+referencing Reqnroll, built + deployed next to the benchmark). It is the prerequisite for (a) the two
+binding-discovery batch scenarios and (b) representative bound-state numbers for definition/step
+completion. The source-only corpus is sufficient for the drift test, semantic tokens, keyword
+completion, diagnostics push, and cold start — which run today.
 
 ---
 

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Reqnroll.IdeSupport.LSP.Server.Benchmarks.Latency;
 using Reqnroll.IdeSupport.LSP.Server.Benchmarks.Reporting;
+using Reqnroll.IdeSupport.LSP.Server.Benchmarks.Scenarios;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Tests.Performance;
 
@@ -56,5 +57,22 @@ public class BenchmarkReportTests
         json.Should().Contain("textDocument/definition");
         json.Should().Contain("P95Ms");
         json.Should().Contain("TESTBOX");
+    }
+
+    [Fact]
+    public void Console_table_lists_skipped_scenarios_with_their_reason()
+    {
+        var report = MakeReport(assert: false, definitionP95: 5) with
+        {
+            Skipped = new[]
+            {
+                new SkippedBatchScenario(PerfTargets.ReflectionDiscovery, "requires a built corpus bindings assembly"),
+            },
+        };
+
+        var table = report.ToConsoleTable();
+        table.Should().Contain("Skipped (not measured):");
+        table.Should().Contain("discovery/reflection-post-build");
+        table.Should().Contain("requires a built corpus bindings assembly");
     }
 }

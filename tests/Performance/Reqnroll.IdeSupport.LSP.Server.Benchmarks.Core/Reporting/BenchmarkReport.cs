@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Reqnroll.IdeSupport.LSP.Server.Benchmarks.Latency;
+using Reqnroll.IdeSupport.LSP.Server.Benchmarks.Scenarios;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Benchmarks.Reporting;
 
@@ -20,7 +21,8 @@ public sealed record BenchmarkReport(
     bool AssertThresholds,
     DateTimeOffset TimestampUtc,
     string CorpusDescription,
-    IReadOnlyList<OperationResult> Results)
+    IReadOnlyList<OperationResult> Results,
+    IReadOnlyList<SkippedBatchScenario>? Skipped = null)
 {
     /// <summary>True when every asserted operation met its §9 target.</summary>
     public bool AllPassed => Results.All(r => r.MeetsTarget);
@@ -53,6 +55,14 @@ public static class ConsoleReporter
                 $"{Trunc(r.Target.Operation, 40),-40} " +
                 $"{r.Target.TargetMs,7:0}ms {r.MeasuredStatistic,6} " +
                 $"{s.P50Ms,7:0.0}ms {s.P95Ms,7:0.0}ms {s.P99Ms,7:0.0}ms {s.MaxMs,7:0.0}ms  {verdict}");
+        }
+
+        if (report.Skipped is { Count: > 0 })
+        {
+            sb.AppendLine();
+            sb.AppendLine("Skipped (not measured):");
+            foreach (var s in report.Skipped)
+                sb.AppendLine($"  {s.Target.Operation,-40} — {s.Reason}");
         }
 
         sb.AppendLine();

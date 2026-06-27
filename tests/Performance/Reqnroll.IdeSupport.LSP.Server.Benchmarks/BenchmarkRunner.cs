@@ -26,6 +26,8 @@ public static class BenchmarkRunner
         var measured = IntArg(args, "--iterations", 50);
         var fileCount = IntArg(args, "--files", 10);
         var outPath = StringArg(args, "--out");
+        var corpusAssembly = StringArg(args, "--corpus-assembly");
+        var includeBatch = !args.Contains("--no-batch");
         var gate = ReferenceMachine.FromEnvironment(args);
 
         var corpusRoot = CorpusLocator.FindCorpusRoot();
@@ -50,6 +52,17 @@ public static class BenchmarkRunner
             (PerfTargets.PublishDiagnostics, await scenarios.DiagnosticsPushAsync().ConfigureAwait(false)),
         };
 
+        // Batch scenarios (coarse wall-clock). Cold start spins up fresh servers, so it is opt-out
+        // via --no-batch for quick interactive-only runs.
+        if (includeBatch)
+        {
+            Console.WriteLine("Running batch scenarios (cold-start scan)...");
+            summaries.Add((PerfTargets.ColdStartScan,
+                await BatchScenarios.ColdStartScanAsync(corpusRoot).ConfigureAwait(false)));
+        }
+
+        var skipped = BatchScenarios.UnavailableDiscoveryScenarios(corpusAssembly);
+
         var results = summaries.Select(s => new OperationResult(s.Target, s.Summary)).ToList();
         var report = new BenchmarkReport(
             MachineName: Environment.MachineName,
@@ -58,7 +71,8 @@ public static class BenchmarkRunner
             CorpusDescription: $"{manifest.Fingerprint.FeatureFileCount} features, " +
                                $"{manifest.Fingerprint.StepDefinitionPatternCount} patterns, " +
                                $"{manifest.Fingerprint.StepCount} steps",
-            Results: results);
+            Results: results,
+            Skipped: skipped);
 
         Console.WriteLine();
         Console.WriteLine(report.ToConsoleTable());
