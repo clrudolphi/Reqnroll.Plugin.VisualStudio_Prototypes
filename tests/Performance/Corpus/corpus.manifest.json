@@ -1,0 +1,18 @@
+{
+  "Description": "Synthetic benchmark corpus for §9 Performance Verification (Layer 2 / T2). Pinned by the committed files; this manifest records the structural fingerprint.",
+  "Generator": {
+    "FeatureFileCount": 50,
+    "UniquePatternCount": 60,
+    "ScenariosPerFeature": 4
+  },
+  "Fingerprint": {
+    "FeatureFileCount": 50,
+    "ScenarioCount": 200,
+    "ScenarioOutlineCount": 50,
+    "StepCount": 1350,
+    "StepDefinitionPatternCount": 64,
+    "BoundStepCount": 950,
+    "UnboundStepCount": 200,
+    "AmbiguousStepCount": 200
+  }
+}

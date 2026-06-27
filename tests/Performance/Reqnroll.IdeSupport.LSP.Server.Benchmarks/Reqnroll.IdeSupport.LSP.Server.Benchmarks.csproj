@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>../../../reqnroll.snk</AssemblyOriginatorKeyFile>
+    <!-- Match the server's RID and self-contained flag so the ProjectReference to the
+         self-contained win-x64 server resolves cleanly (NETSDK1151) and the connector binaries
+         deploy alongside. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <!-- VSTHRD103/VSTHRD002: a console benchmark tool legitimately uses synchronous Console
+         output and blocking waits; the vs-threading rules target UI apps, not CLI tooling. -->
+    <NoWarn>NU1701;VSTHRD200;VSTHRD103;VSTHRD002</NoWarn>
+    <RootNamespace>Reqnroll.IdeSupport.LSP.Server.Benchmarks</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.Streams" Version="2.11.79" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageClient" Version="0.19.9" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/LSP/Reqnroll.IdeSupport.LSP.Server/Reqnroll.IdeSupport.LSP.Server.csproj" />
+    <ProjectReference Include="../Reqnroll.IdeSupport.LSP.Server.Benchmarks.Corpus/Reqnroll.IdeSupport.LSP.Server.Benchmarks.Corpus.csproj" />
+  </ItemGroup>
+
+</Project>

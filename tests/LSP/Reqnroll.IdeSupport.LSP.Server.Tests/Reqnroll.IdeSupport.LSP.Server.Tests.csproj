@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../src/LSP/Reqnroll.IdeSupport.LSP.Server/Reqnroll.IdeSupport.LSP.Server.csproj" />
+    <ProjectReference Include="../../Performance/Reqnroll.IdeSupport.LSP.Server.Benchmarks.Corpus/Reqnroll.IdeSupport.LSP.Server.Benchmarks.Corpus.csproj" />
   </ItemGroup>
 
 </Project>
