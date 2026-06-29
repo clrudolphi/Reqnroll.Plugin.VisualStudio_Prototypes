@@ -22,6 +22,14 @@ namespace Reqnroll.IdeSupport.VisualStudio.Extension;
     UIContextGuids80.SolutionExists,
     PackageAutoLoadFlags.BackgroundLoad)]
 [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+// Put the extension install folder on VS's assembly binding path. Without this, VS can only
+// load our assemblies by *path* (which MEF does via catalog.json) — but identity-based loads
+// fail: the VsPackage itself (Assembly.Load of this assembly's strong name from the pkgdef)
+// and the item/project template wizards (loaded by the template engine via the strong name in
+// each .vstemplate's <WizardExtension>) both resolve by identity and otherwise get
+// FileNotFound. The Microsoft.VisualStudio.Assembly manifest assets are not honored as
+// codebases in the VSSDK+VisualStudio.Extensibility hybrid, so a BindingPath is required.
+[ProvideBindingPath]
 [Guid(PackageGuidString)]
 public sealed class ReqnrollPluginPackage : AsyncPackage
 {

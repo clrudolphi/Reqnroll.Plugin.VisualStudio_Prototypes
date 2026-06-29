@@ -36,11 +36,15 @@
     <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
     <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="File" Path="BindingRedirects.pkgdef" />
     <Asset Type="Microsoft.VisualStudio.Assembly" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%|" AssemblyName="|%CurrentProject%;AssemblyName|" />
+    <!-- Register the wizard assembly's own built output (NOT ReferenceCopyLocalPathsOutputGroup,
+         which is the project's copy-local *dependencies* — that made the build register the
+         codebase for this assembly name against the first dependency file, envdte.dll, so the
+         template's WizardExtension load failed). Mirror the %CurrentProject% asset above. -->
     <Asset Type="Microsoft.VisualStudio.Assembly"
            d:Source="Project"
            d:ProjectName="Reqnroll.IdeSupport.VisualStudio.Wizards"
-           Path="|Reqnroll.IdeSupport.VisualStudio.Wizards;ReferenceCopyLocalPathsOutputGroup|"
-           AssemblyName="Reqnroll.IdeSupport.VisualStudio.Wizards" />
+           Path="|Reqnroll.IdeSupport.VisualStudio.Wizards|"
+           AssemblyName="|Reqnroll.IdeSupport.VisualStudio.Wizards;AssemblyName|" />
     <Asset Type="Microsoft.VisualStudio.ItemTemplate"
            d:Source="Project"
            d:ProjectName="Reqnroll.IdeSupport.VisualStudio.ItemTemplates"
@@ -59,10 +63,12 @@
            d:Source="Project"
            d:ProjectName="Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration"
            Path="|Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration;BuiltProjectOutputGroup|" />
-    <Asset Type="Microsoft.VisualStudio.Assembly"
-           d:Source="Project"
-           d:ProjectName="Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration"
-           Path="|Reqnroll.IdeSupport.VisualStudio.VSSDKIntegration;ReferenceCopyLocalPathsOutputGroup|"
-           AssemblyName="Reqnroll.IdeSupport.VisualStudio.SDKIntegration" />
+    <!-- VSSDKIntegration is already registered above as a MefComponent, which loads it and
+         puts it on the extension's binding path. A separate Microsoft.VisualStudio.Assembly
+         asset for the SAME dll path duplicates the registration and makes VS fail to process
+         the assembly-asset block (taking the Extension package codebase down with it, so the
+         package fails to load). Unlike the Wizards assembly — which has no MefComponent and
+         IS loaded by VS's template engine via its strong-name codebase — VSSDKIntegration
+         needs no Microsoft.VisualStudio.Assembly asset. -->
   </Assets>
   </PackageManifest>

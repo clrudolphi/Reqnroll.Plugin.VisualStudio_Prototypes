@@ -7,6 +7,11 @@
     <LangVersion>10.0</LangVersion>
     <RootNamespace>Reqnroll.IdeSupport.VisualStudio.Wizards</RootNamespace>
     <AssemblyName>Reqnroll.IdeSupport.VisualStudio.Wizards</AssemblyName>
+    <!-- The .vstemplate WizardExtension references this assembly by strong name with a
+         fixed Version=1.0.0.0. Strong-name binding requires an exact AssemblyVersion match,
+         so pin it here and keep it stable across package version bumps (VersionPrefix in
+         build/Version.props). Otherwise "Add New Item > Reqnroll" fails to load the wizard. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\..\reqnroll.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
