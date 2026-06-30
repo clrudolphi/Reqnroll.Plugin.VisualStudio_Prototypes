@@ -152,13 +152,18 @@ function parseLspTraceMessage(text: string): LspEntry | undefined {
 
   if (!head) return undefined;
 
+  const isResponse = head.type === 'send-response' || head.type === 'receive-response';
+
   const rpcMsg: Record<string, unknown> = { jsonrpc: '2.0' };
-  if (head.method !== undefined) rpcMsg['method'] = head.method;
+  // Responses must NOT carry "method" — the viewer correlates response→request by id.
+  // Requests and notifications always carry "method".
+  if (!isResponse && head.method !== undefined) rpcMsg['method'] = head.method;
   if (head.id !== undefined) {
     const n = Number(head.id);
     rpcMsg['id'] = isNaN(n) ? head.id : n;
   }
 
+  let hasResultOrError = false;
   if (bodyStr) {
     // Body is "Params: <json>", "Result: <json>", or "Error data: <json>"
     const bm = bodyStr.match(/^(Params|Result|Error data): ([\s\S]+)$/);
@@ -166,13 +171,17 @@ function parseLspTraceMessage(text: string): LspEntry | undefined {
       try {
         const json = JSON.parse(bm[2]);
         if (bm[1] === 'Params')      rpcMsg['params'] = json;
-        else if (bm[1] === 'Result') rpcMsg['result'] = json;
-        else                          rpcMsg['error']  = { data: json };
+        else if (bm[1] === 'Result') { rpcMsg['result'] = json; hasResultOrError = true; }
+        else                          { rpcMsg['error']  = { data: json }; hasResultOrError = true; }
       } catch {
         // Malformed JSON — omit the field rather than crashing
       }
     }
   }
+
+  // Responses with no parsed result/error get result:null — matches VS extension format
+  // where the raw JSON-RPC response always carries an explicit "result" field.
+  if (isResponse && !hasResultOrError) rpcMsg['result'] = null;
 
   return { isLSPMessage: true, type: head.type, message: rpcMsg, timestamp: Date.now() };
 }
