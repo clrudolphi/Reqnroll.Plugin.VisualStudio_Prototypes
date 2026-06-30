@@ -20,7 +20,12 @@ public sealed class LspDeveroomLogger : IDeveroomLogger
 
     public LspDeveroomLogger(ClientIdeContext clientIdeContext)
     {
-        var idePrefix = clientIdeContext.Ide == "vscode" ? "vscode" : "vs";
+        var idePrefix = clientIdeContext.Ide switch
+        {
+            "visualstudio" => "vs",
+            "vscode"       => "vscode",
+            _              => "lsp"   // unknown or absent --ide; avoid misattributing to a known IDE
+        };
         _inner = new DeveroomCompositeLogger()
             .Add(new DeveroomDebugLogger())
             .Add(new SynchronousFileLogger(idePrefix));
