@@ -14,14 +14,14 @@ public class AsynchronousFileLogger : IDeveroomLogger, IDisposable
     private readonly IFileSystemForIDE _fileSystem;
     private readonly CancellationTokenSource _stopTokenSource;
 
-    protected AsynchronousFileLogger(IFileSystemForIDE fileSystem, TraceLevel level)
+    protected AsynchronousFileLogger(IFileSystemForIDE fileSystem, TraceLevel level, string idePrefix = "vs")
     {
         _fileSystem = fileSystem;
         Level = level;
         // Unbounded so that bursts (e.g. 30+ concurrent spec scenarios) never silently drop messages.
         _channel = Channel.CreateUnbounded<LogMessage>();
         _stopTokenSource = new CancellationTokenSource();
-        LogFilePath = GetLogFile();
+        LogFilePath = GetLogFile(idePrefix);
     }
 
     public string LogFilePath { get; private set; }
@@ -39,20 +39,20 @@ public class AsynchronousFileLogger : IDeveroomLogger, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    internal static string GetLogFile()
+    internal static string GetLogFile(string idePrefix = "vs")
     {
         return Path.Combine(Environment.GetFolderPath(
                 Environment.SpecialFolder.LocalApplicationData), "Reqnroll",
 #if DEBUG
-            $"reqnroll-vs-debug-{DateTime.UtcNow:yyyyMMdd}.log");
+            $"reqnroll-{idePrefix}-debug-{DateTime.UtcNow:yyyyMMdd}.log");
 #else
-            $"reqnroll-vs-{DateTime.Now:yyyyMMdd}.log");
+            $"reqnroll-{idePrefix}-{DateTime.Now:yyyyMMdd}.log");
 #endif
     }
 
-    public static AsynchronousFileLogger CreateInstance(IFileSystemForIDE fileSystem)
+    public static AsynchronousFileLogger CreateInstance(IFileSystemForIDE fileSystem, string idePrefix = "vs")
     {
-        var fileLogger = new AsynchronousFileLogger(fileSystem, TraceLevel.Verbose);
+        var fileLogger = new AsynchronousFileLogger(fileSystem, TraceLevel.Verbose, idePrefix);
         Task.Factory.StartNew(
             fileLogger.Start,
             fileLogger._stopTokenSource.Token,
@@ -115,7 +115,7 @@ public class AsynchronousFileLogger : IDeveroomLogger, IDisposable
             if (!Directory.Exists(logFolder))
                 return;
 
-            var logFiles = Directory.GetFiles(logFolder, "reqnroll-vs-*.log");
+            var logFiles = Directory.GetFiles(logFolder, "reqnroll-*.log");
 
             foreach (string logFile in logFiles)
             {

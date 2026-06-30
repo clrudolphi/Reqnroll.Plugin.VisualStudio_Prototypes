@@ -24,7 +24,9 @@ class TeeLogOutputChannel implements vscode.LogOutputChannel {
   }
 
   get logLevel(): vscode.LogLevel {
-    return this._inner.logLevel;
+    // Always report Trace so vscode-languageclient's LogOutputChannelTracer
+    // doesn't gate-keep messages before calling trace()/debug()/info() on us.
+    return vscode.LogLevel.Trace;
   }
 
   get onDidChangeLogLevel(): vscode.Event<vscode.LogLevel> {

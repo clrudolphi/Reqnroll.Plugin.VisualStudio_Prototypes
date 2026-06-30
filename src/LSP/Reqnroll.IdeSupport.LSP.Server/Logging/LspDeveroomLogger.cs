@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using Reqnroll.IdeSupport.Common.Diagnostics;
+using Reqnroll.IdeSupport.LSP.Server.Hosting;
 
 namespace Reqnroll.IdeSupport.LSP.Server.Logging;
 
@@ -17,11 +18,12 @@ public sealed class LspDeveroomLogger : IDeveroomLogger
 {
     private readonly DeveroomCompositeLogger _inner;
 
-    public LspDeveroomLogger()
+    public LspDeveroomLogger(ClientIdeContext clientIdeContext)
     {
+        var idePrefix = clientIdeContext.Ide == "vscode" ? "vscode" : "vs";
         _inner = new DeveroomCompositeLogger()
             .Add(new DeveroomDebugLogger())
-            .Add(new SynchronousFileLogger());
+            .Add(new SynchronousFileLogger(idePrefix));
 
         var version   = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
         var location  = Assembly.GetExecutingAssembly().Location;

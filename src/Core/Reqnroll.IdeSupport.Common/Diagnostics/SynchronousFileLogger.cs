@@ -5,8 +5,8 @@ namespace Reqnroll.IdeSupport.Common.Diagnostics;
 
 public class SynchronousFileLogger : AsynchronousFileLogger
 {
-    public SynchronousFileLogger()
-        : base(new FileSystemForIDE(), TraceLevel.Verbose)
+    public SynchronousFileLogger(string idePrefix = "vs")
+        : base(new FileSystemForIDE(), TraceLevel.Verbose, idePrefix)
     {
         EnsureLogFolder();
     }
