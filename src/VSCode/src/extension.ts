@@ -10,6 +10,7 @@ import { doFindStepUsages, doFindUnusedStepDefinitions } from './stepUsages';
 import { doGoToHooks } from './hookNavigation';
 import { doGoToStepDefinition } from './stepNavigation';
 import { registerStepCodeLens } from './stepCodeLens';
+import { ManualDocumentSync, createManualSyncMiddleware, isCSharpDocument } from './manualDocumentSync';
 
 let client: LanguageClient | undefined;
 let projectManager: ProjectManager | undefined;
@@ -201,6 +202,10 @@ export function activate(context: vscode.ExtensionContext): void {
     },
     outputChannel,
     traceOutputChannel: traceChannel,
+    // .cs sync is driven manually (see manualDocumentSync.ts) because
+    // vscode-languageclient's built-in sync has proven unreliable for it; this middleware
+    // stops the built-in path from also emitting sync notifications for .cs documents.
+    middleware: createManualSyncMiddleware(isCSharpDocument),
   };
 
   client = new LanguageClient('reqnroll', 'Reqnroll Language Server', serverOptions, clientOptions);
@@ -214,6 +219,9 @@ export function activate(context: vscode.ExtensionContext): void {
       projectManager = new ProjectManager(client!);
       // F18 — Step usage CodeLens for C# files (registered after client is running)
       registerStepCodeLens(client!, context);
+      // Manually sync .cs documents (see manualDocumentSync.ts / createManualSyncMiddleware
+      // above) instead of relying on vscode-languageclient's built-in sync feature.
+      context.subscriptions.push(new ManualDocumentSync(client!, isCSharpDocument));
     })
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
