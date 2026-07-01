@@ -56,7 +56,7 @@ export async function doFindStepUsages(
     return;
   }
 
-  if (!response || !response.isBinding) {
+  if (!response?.isBinding) {
     void vscode.window.showInformationMessage(
       'Reqnroll: The cursor is not on a step definition binding.',
     );
@@ -130,7 +130,7 @@ export async function doFindUnusedStepDefinitions(client: LanguageClient): Promi
     matchOnDescription: true,
     matchOnDetail: true,
   });
-  if (!picked || !picked.item.sourceFile) return;
+  if (!picked?.item.sourceFile) return;
 
   await openAndReveal(
     vscode.Uri.file(picked.item.sourceFile),

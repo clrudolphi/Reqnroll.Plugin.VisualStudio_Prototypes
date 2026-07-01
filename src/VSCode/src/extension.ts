@@ -76,7 +76,7 @@ function resolveServerPath(context: vscode.ExtensionContext): string {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const notReadyAsync = (label: string) => async () => {
+  const notReady = (label: string) => () => {
     void vscode.window.showInformationMessage(
       `Reqnroll: ${label} will be available once the LSP server is ready.`,
     );
@@ -94,7 +94,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // F13 — Comment/Uncomment (Ctrl+/ for gherkin files)
     vscode.commands.registerCommand('reqnroll.toggleComment', async () => {
       if (!client) {
-        notReadyAsync('Toggle Comment')();
+        notReady('Toggle Comment')();
         return;
       }
       await doToggleComment(client);
@@ -104,7 +104,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // When invoked from a CodeLens the server passes [uri, line, char] as arguments.
     vscode.commands.registerCommand('reqnroll.findStepUsages', async (...args: unknown[]) => {
       if (!client) {
-        notReadyAsync('Find Step Usages')();
+        notReady('Find Step Usages')();
         return;
       }
       let uriStr: string;
@@ -139,7 +139,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // F15 — Find Unused Step Definitions
     vscode.commands.registerCommand('reqnroll.findUnusedStepDefinitions', async () => {
       if (!client) {
-        notReadyAsync('Find Unused Step Definitions')();
+        notReady('Find Unused Step Definitions')();
         return;
       }
       await doFindUnusedStepDefinitions(client);
@@ -148,7 +148,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // F17 — Go to Hooks
     vscode.commands.registerCommand('reqnroll.goToHooks', async () => {
       if (!client) {
-        notReadyAsync('Go to Hooks')();
+        notReady('Go to Hooks')();
         return;
       }
       await doGoToHooks(client);
@@ -157,7 +157,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // F5 — Go to Step Definition (rich picker with method name + step type)
     vscode.commands.registerCommand('reqnroll.goToStepDefinition', async () => {
       if (!client) {
-        notReadyAsync('Go to Step Definition')();
+        notReady('Go to Step Definition')();
         return;
       }
       await doGoToStepDefinition(client);

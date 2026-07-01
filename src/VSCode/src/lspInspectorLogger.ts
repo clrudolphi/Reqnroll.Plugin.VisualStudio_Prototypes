@@ -130,6 +130,45 @@ interface LspEntry {
   timestamp: number;
 }
 
+type ParsedHead = { type: LspMessageType; method?: string; id?: string };
+
+/**
+ * Patterns for the summary line vscode-jsonrpc produces under TraceFormat.Text, tried in order
+ * and stopping at the first match. Order matters: "response" patterns are checked before the
+ * catch-all "request" patterns.
+ */
+const HEAD_PATTERNS: { regex: RegExp; parse: (m: RegExpMatchArray) => ParsedHead }[] = [
+  {
+    regex: /^Sending request '(.+?) - \((.+?)\)'\./,
+    parse: (m) => ({ type: 'send-request', method: m[1], id: m[2] }),
+  },
+  {
+    regex: /^Received request '(.+?) - \((.+?)\)'\./,
+    parse: (m) => ({ type: 'receive-request', method: m[1], id: m[2] }),
+  },
+  {
+    regex: /^Sending response '(.+?) - \((.+?)\)'\./,
+    parse: (m) => ({ type: 'send-response', method: m[1], id: m[2] }),
+  },
+  {
+    regex: /^Received response '(.+?) - \((.+?)\)' in \d+ms\./,
+    parse: (m) => ({ type: 'receive-response', method: m[1], id: m[2] }),
+  },
+  {
+    // "without active response promise" variant — no method available
+    regex: /^Received response (\S+) without active response promise\./,
+    parse: (m) => ({ type: 'receive-response', id: m[1] }),
+  },
+  {
+    regex: /^Sending notification '(.+?)'\./,
+    parse: (m) => ({ type: 'send-notification', method: m[1] }),
+  },
+  {
+    regex: /^Received notification '(.+?)'\./,
+    parse: (m) => ({ type: 'receive-notification', method: m[1] }),
+  },
+];
+
 /**
  * Parses the human-readable text that vscode-jsonrpc produces under TraceFormat.Text
  * and rebuilds the {"isLSPMessage":true,...} JSON object the lsp-viewer expects.
@@ -143,39 +182,14 @@ function parseLspTraceMessage(text: string): LspEntry | undefined {
   const firstLine = nl >= 0 ? text.slice(0, nl) : text;
   const bodyStr = nl >= 0 ? text.slice(nl + 1) : '';
 
-  type ParsedHead = { type: LspMessageType; method?: string; id?: string };
-
   let head: ParsedHead | undefined;
-  let m: RegExpMatchArray | null;
-
-  // Order matters: "response" patterns checked before catch-all "request" patterns.
-  (m = firstLine.match(/^Sending request '(.+?) - \((.+?)\)'\./)) &&
-    (head = { type: 'send-request', method: m[1], id: m[2] });
-
-  head ||
-    ((m = firstLine.match(/^Received request '(.+?) - \((.+?)\)'\./)) &&
-      (head = { type: 'receive-request', method: m[1], id: m[2] }));
-
-  head ||
-    ((m = firstLine.match(/^Sending response '(.+?) - \((.+?)\)'\./)) &&
-      (head = { type: 'send-response', method: m[1], id: m[2] }));
-
-  head ||
-    ((m = firstLine.match(/^Received response '(.+?) - \((.+?)\)' in \d+ms\./)) &&
-      (head = { type: 'receive-response', method: m[1], id: m[2] }));
-
-  // "without active response promise" variant — no method available
-  head ||
-    ((m = firstLine.match(/^Received response (\S+) without active response promise\./)) &&
-      (head = { type: 'receive-response', id: m[1] }));
-
-  head ||
-    ((m = firstLine.match(/^Sending notification '(.+?)'\./)) &&
-      (head = { type: 'send-notification', method: m[1] }));
-
-  head ||
-    ((m = firstLine.match(/^Received notification '(.+?)'\./)) &&
-      (head = { type: 'receive-notification', method: m[1] }));
+  for (const { regex, parse } of HEAD_PATTERNS) {
+    const m = firstLine.match(regex);
+    if (m) {
+      head = parse(m);
+      break;
+    }
+  }
 
   if (!head) return undefined;
 
@@ -196,7 +210,7 @@ function parseLspTraceMessage(text: string): LspEntry | undefined {
     const bm = bodyStr.match(/^(Params|Result|Error data): ([\s\S]+)$/);
     if (bm) {
       try {
-        const json = JSON.parse(bm[2]);
+        const json = JSON.parse(bm[2]) as unknown;
         if (bm[1] === 'Params') rpcMsg['params'] = json;
         else if (bm[1] === 'Result') {
           rpcMsg['result'] = json;
