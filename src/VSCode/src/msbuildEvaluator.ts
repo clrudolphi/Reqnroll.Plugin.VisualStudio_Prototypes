@@ -247,13 +247,17 @@ function tfmToShort(tfm: string): string {
   );
   if (!match) return tfm.toLowerCase().replace(/[^a-z0-9.]/g, '');
 
-  const version = match[1];
-  const majorMinor = version.split('.').slice(0, 2);
-  const major = Number(majorMinor[0]);
-  const minor = Number(majorMinor[1] ?? 0);
+  const versionParts = match[1].split('.');
+  const major = versionParts[0];
+  const minor = versionParts[1] ?? '0';
+  const patch = versionParts[2];
 
   if (tfm.includes('NETFramework')) {
-    return `net${major}${minor < 10 ? '0' : ''}${minor}`;
+    // Each version component is a single digit for every real .NET Framework release, so they
+    // concatenate directly with no separator or padding: 4.5 → net45, 4.5.1 → net451,
+    // 4.8 → net48, 4.8.1 → net481. The patch digit is only appended when present and non-zero.
+    const suffix = patch && patch !== '0' ? patch : '';
+    return `net${major}${minor}${suffix}`;
   }
   if (tfm.includes('NETStandard')) {
     return `netstandard${major}.${minor}`;
