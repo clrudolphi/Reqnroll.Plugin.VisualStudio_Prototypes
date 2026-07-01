@@ -42,7 +42,8 @@ export function registerStepCodeLens(
           }
           return codeLens;
         });
-      } catch {
+      } catch (err) {
+        console.warn('StepCodeLens: textDocument/codeLens request failed', err);
         return [];
       }
     },

@@ -126,7 +126,10 @@ export function activate(context: vscode.ExtensionContext): void {
       await doFindStepUsages(client, uriStr, line, char);
     }),
 
-    // F14 — No-op command for CodeLens items that report 0 usages
+    // F14 — No-op command for CodeLens items that report 0 usages. Deliberately absent from
+    // package.json's contributes.commands: it's only ever invoked as a CodeLens click target
+    // (see StepCodeLensHandler.cs), never from the command palette, so it doesn't need a
+    // manifest entry — VS Code only requires one for palette/keybinding/menu visibility.
     vscode.commands.registerCommand('reqnroll.noStepUsages', () => {
       void vscode.window.showInformationMessage(
         'Reqnroll: This step definition has no usages in any feature file.',

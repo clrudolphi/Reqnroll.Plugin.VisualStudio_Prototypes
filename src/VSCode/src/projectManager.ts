@@ -20,6 +20,45 @@ const enum ProjectFileRole {
 const RESEND_DEBOUNCE_MS = 500;
 
 /**
+ * Finds the workspace folder that contains the given project file path.
+ * Falls back to the first workspace folder, or to the project file itself when there are no
+ * workspace folders at all. Pure function (folders passed in) so it's directly testable without
+ * a running Extension Host — see projectManager.test.ts.
+ */
+export function resolveWorkspaceFolder(projectFile: string, folders: readonly string[]): string {
+  if (folders.length === 0) return projectFile;
+
+  for (const folder of folders) {
+    if (projectFile.startsWith(folder)) {
+      return folder;
+    }
+  }
+
+  return folders[0];
+}
+
+/**
+ * Nearest known .csproj whose directory contains `filePath` (deepest match wins). Pure function
+ * (known projects passed in) so it's directly testable without a running Extension Host.
+ */
+export function findOwningProjectFile(
+  filePath: string,
+  knownProjects: ReadonlySet<string>,
+): string | undefined {
+  let best: string | undefined;
+  let bestLen = 0;
+  for (const projectFile of knownProjects) {
+    if (!projectFile.endsWith('.csproj')) continue;
+    const folder = path.dirname(projectFile) + path.sep;
+    if (filePath.toLowerCase().startsWith(folder.toLowerCase()) && folder.length > bestLen) {
+      best = projectFile;
+      bestLen = folder.length;
+    }
+  }
+  return best;
+}
+
+/**
  * Manages custom LSP notifications (reqnroll/projectLoaded, projectUnloaded, projectFiles)
  * for the VS Code extension.
  *
@@ -32,6 +71,10 @@ const RESEND_DEBOUNCE_MS = 500;
  *     folder-prefix-fallback state, matching what VS's VsProjectEventMonitor already provides.
  *     Without this, linked files outside a project's folder and files excluded via .csproj
  *     globs are handled by best-effort folder-prefix matching indefinitely.
+ * v4: re-runs discovery when workspace folders are added/removed after activation (VS Code's
+ *     own `workspace/didChangeWorkspaceFolders` LSP notification is already sent automatically
+ *     by vscode-languageclient's WorkspaceFoldersFeature; this only covers *our* project
+ *     discovery, which the library has no knowledge of).
  */
 export class ProjectManager {
   private readonly _client: LanguageClient;
@@ -44,22 +87,25 @@ export class ProjectManager {
   constructor(client: LanguageClient) {
     this._client = client;
 
-    // Watch for project/solution file changes across all workspace folders
+    // Watch for project/solution file changes across all workspace folders. Their FileSystemWatcher.dispose()
+    // (below) already tears down these listeners, so their per-listener Disposables aren't tracked separately.
     this._watcher = vscode.workspace.createFileSystemWatcher('**/*.{csproj,slnx,sln}');
-
-    this._disposables.push(
-      this._watcher.onDidCreate((uri) => void this.onProjectCreated(uri)),
-      this._watcher.onDidDelete((uri) => void this.onProjectDeleted(uri)),
-    );
+    this._watcher.onDidCreate((uri) => void this.onProjectCreated(uri));
+    this._watcher.onDidDelete((uri) => void this.onProjectDeleted(uri));
 
     // Re-evaluate a project's file membership when a .cs/.feature file is added or removed
     // under it, so the server's membership index doesn't go stale after the initial baseline
     // (e.g. a new step-definition file, or a deleted/renamed .feature file).
     this._fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.{cs,feature}');
+    this._fileWatcher.onDidCreate((uri) => this.scheduleResend(uri));
+    this._fileWatcher.onDidDelete((uri) => this.scheduleResend(uri));
 
+    // Re-run discovery when a workspace folder is added (e.g. a multi-root workspace gains a
+    // folder with its own .csproj/.feature files), and drop projects under a removed folder.
     this._disposables.push(
-      this._fileWatcher.onDidCreate((uri) => this.scheduleResend(uri)),
-      this._fileWatcher.onDidDelete((uri) => this.scheduleResend(uri)),
+      vscode.workspace.onDidChangeWorkspaceFolders(
+        (event) => void this.onWorkspaceFoldersChanged(event),
+      ),
     );
 
     // Discover any projects already present in the workspace
@@ -110,12 +156,32 @@ export class ProjectManager {
   }
 
   /**
+   * Re-scans for newly added workspace folders (dedup-safe: registerProject skips projects
+   * already known) and unregisters any known project that lived under a removed folder.
+   */
+  private async onWorkspaceFoldersChanged(
+    event: vscode.WorkspaceFoldersChangeEvent,
+  ): Promise<void> {
+    if (event.added.length > 0) {
+      await this.discoverExistingProjects();
+    }
+
+    for (const removed of event.removed) {
+      const folder = removed.uri.fsPath + path.sep;
+      const toUnload = [...this._knownProjects].filter((p) => p.startsWith(folder));
+      for (const projectFile of toUnload) {
+        await this.unregisterProject(vscode.Uri.file(projectFile));
+      }
+    }
+  }
+
+  /**
    * Debounces a full membership re-evaluation for the project (if any) that owns `uri`.
    * No-op for files under a project VS Code hasn't discovered yet — that project's own
    * registration will send a baseline that already includes the file.
    */
   private scheduleResend(uri: vscode.Uri): void {
-    const projectFile = this.findOwningProject(uri.fsPath);
+    const projectFile = findOwningProjectFile(uri.fsPath, this._knownProjects);
     if (!projectFile) return;
 
     const existing = this._resendTimers.get(projectFile);
@@ -128,21 +194,6 @@ export class ProjectManager {
         void this.resendProjectFiles(projectFile);
       }, RESEND_DEBOUNCE_MS),
     );
-  }
-
-  /** Nearest known .csproj whose directory contains `filePath` (deepest match wins). */
-  private findOwningProject(filePath: string): string | undefined {
-    let best: string | undefined;
-    let bestLen = 0;
-    for (const projectFile of this._knownProjects) {
-      if (!projectFile.endsWith('.csproj')) continue;
-      const folder = path.dirname(projectFile) + path.sep;
-      if (filePath.toLowerCase().startsWith(folder.toLowerCase()) && folder.length > bestLen) {
-        best = projectFile;
-        bestLen = folder.length;
-      }
-    }
-    return best;
   }
 
   /** Re-runs MSBuild evaluation for an already-registered project and resends its baseline. */
@@ -170,7 +221,8 @@ export class ProjectManager {
       return;
     }
 
-    const workspaceFolder = this.resolveWorkspaceFolder(projectFile);
+    const folders = (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
+    const workspaceFolder = resolveWorkspaceFolder(projectFile, folders);
     const projectFolder = path.dirname(projectFile);
 
     // v2: evaluate via dotnet msbuild
@@ -246,24 +298,5 @@ export class ProjectManager {
     } catch (err) {
       console.error(`ProjectManager: failed to send projectUnloaded for ${projectFile}:`, err);
     }
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────
-
-  /**
-   * Finds the workspace folder that contains the given project file path.
-   * Falls back to the first workspace folder.
-   */
-  private resolveWorkspaceFolder(projectFile: string): string {
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders || folders.length === 0) return projectFile;
-
-    for (const folder of folders) {
-      if (projectFile.startsWith(folder.uri.fsPath)) {
-        return folder.uri.fsPath;
-      }
-    }
-
-    return folders[0].uri.fsPath;
   }
 }

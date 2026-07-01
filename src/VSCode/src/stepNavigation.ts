@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { ReqnrollMethods } from './lspMethods';
+import { openAndReveal } from './navigationUtils';
 
 interface GoToStepDefinitionsResponse {
   stepDefinitions: GoToStepDefinitionLocation[];
@@ -62,12 +63,7 @@ export async function doGoToStepDefinition(client: LanguageClient): Promise<void
 }
 
 async function navigateToStepDefinition(def: GoToStepDefinitionLocation): Promise<void> {
-  const uri = vscode.Uri.parse(def.uri);
-  const pos = new vscode.Position(def.startLine, def.startChar);
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const ed = await vscode.window.showTextDocument(doc);
-  ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
-  ed.selection = new vscode.Selection(pos, pos);
+  await openAndReveal(vscode.Uri.parse(def.uri), def.startLine, def.startChar);
 }
 
 function uriToRelativePath(uriStr: string): string {

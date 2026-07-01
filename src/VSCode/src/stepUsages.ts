@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { ReqnrollMethods } from './lspMethods';
+import { openAndReveal } from './navigationUtils';
 
 interface FindStepUsagesResponse {
   isBinding: boolean;
@@ -85,7 +86,7 @@ export async function doFindStepUsages(
   });
   if (!picked) return;
 
-  await navigateTo(vscode.Uri.parse(picked.loc.uri), picked.loc.startLine, picked.loc.startChar);
+  await openAndReveal(vscode.Uri.parse(picked.loc.uri), picked.loc.startLine, picked.loc.startChar);
 }
 
 export async function doFindUnusedStepDefinitions(client: LanguageClient): Promise<void> {
@@ -131,17 +132,9 @@ export async function doFindUnusedStepDefinitions(client: LanguageClient): Promi
   });
   if (!picked || !picked.item.sourceFile) return;
 
-  await navigateTo(
+  await openAndReveal(
     vscode.Uri.file(picked.item.sourceFile),
     picked.item.sourceLine,
     picked.item.sourceChar,
   );
-}
-
-async function navigateTo(uri: vscode.Uri, line: number, char: number): Promise<void> {
-  const pos = new vscode.Position(line, char);
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const ed = await vscode.window.showTextDocument(doc);
-  ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
-  ed.selection = new vscode.Selection(pos, pos);
 }

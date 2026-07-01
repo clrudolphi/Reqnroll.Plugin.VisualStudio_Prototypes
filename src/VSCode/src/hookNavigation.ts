@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { ReqnrollMethods } from './lspMethods';
+import { openAndReveal } from './navigationUtils';
 
 interface GoToHooksResponse {
   hooks: GoToHookLocation[];
@@ -57,10 +58,5 @@ export async function doGoToHooks(client: LanguageClient): Promise<void> {
 }
 
 async function navigateToHook(hook: GoToHookLocation): Promise<void> {
-  const uri = vscode.Uri.parse(hook.uri);
-  const pos = new vscode.Position(hook.startLine, hook.startChar);
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const ed = await vscode.window.showTextDocument(doc);
-  ed.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
-  ed.selection = new vscode.Selection(pos, pos);
+  await openAndReveal(vscode.Uri.parse(hook.uri), hook.startLine, hook.startChar);
 }

@@ -1,96 +1,79 @@
 import * as assert from 'assert';
+import * as path from 'path';
 import * as vscode from 'vscode';
+import { resolveWorkspaceFolder, findOwningProjectFile } from '../projectManager';
+import { ReqnrollMethods } from '../lspMethods';
 
 suite('ProjectManager', () => {
-  const methodNames = {
-    projectLoaded: 'reqnroll/projectLoaded',
-    projectUnloaded: 'reqnroll/projectUnloaded',
-    projectFiles: 'reqnroll/projectFiles',
-  } as const;
-
-  test('should define correct LSP method names', () => {
-    assert.strictEqual(methodNames.projectLoaded, 'reqnroll/projectLoaded');
-    assert.strictEqual(methodNames.projectUnloaded, 'reqnroll/projectUnloaded');
-    assert.strictEqual(methodNames.projectFiles, 'reqnroll/projectFiles');
+  test('ReqnrollMethods defines the LSP method names ProjectManager sends', () => {
+    // Exercises the real constants module, not a local copy — a rename in lspMethods.ts
+    // (or a mismatch with LspMethodNames.cs) would fail this test.
+    assert.strictEqual(ReqnrollMethods.projectLoaded, 'reqnroll/projectLoaded');
+    assert.strictEqual(ReqnrollMethods.projectUnloaded, 'reqnroll/projectUnloaded');
+    assert.strictEqual(ReqnrollMethods.projectFiles, 'reqnroll/projectFiles');
   });
 
-  test('projectLoaded params should have the required shape', () => {
-    const params = {
-      workspaceFolder: '/workspace',
-      projectFile: '/workspace/src/MyProject.csproj',
-      projectFolder: '/workspace/src',
-      outputAssemblyPath: '',
-      targetFrameworkMoniker: '',
-      defaultNamespace: '',
-      packageReferences: [] as { packageId: string; version: string; installPath: string }[],
-    };
-
-    // Verify all required fields are present
-    assert.ok(typeof params.workspaceFolder === 'string');
-    assert.ok(typeof params.projectFile === 'string');
-    assert.ok(typeof params.projectFolder === 'string');
-    assert.ok(typeof params.outputAssemblyPath === 'string');
-    assert.ok(typeof params.targetFrameworkMoniker === 'string');
-    assert.ok(typeof params.defaultNamespace === 'string');
-    assert.ok(Array.isArray(params.packageReferences));
-  });
-
-  test('projectUnloaded params should have projectFile only', () => {
-    const params = { projectFile: '/workspace/src/MyProject.csproj' };
-    assert.ok(typeof params.projectFile === 'string');
-    assert.strictEqual(Object.keys(params).length, 1);
-  });
-
-  test('should discover .csproj files from workspace folders', async () => {
+  test('should discover .csproj/.slnx/.sln files from workspace folders', async () => {
     const patterns = ['**/*.csproj', '**/*.slnx', '**/*.sln'];
-    const found: vscode.Uri[] = [];
+    const found = new Set<string>();
 
     for (const pattern of patterns) {
       const matches = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
-      found.push(...matches);
+      for (const uri of matches) found.add(uri.toString());
     }
 
-    // The extension's own project should be discoverable
-    assert.ok(Array.isArray(found));
+    // node_modules is excluded, and matches from the three patterns must not collide
+    // (a .csproj can't also be a .sln/.slnx), so no duplicate handling should be needed.
+    for (const uriStr of found) {
+      assert.ok(!uriStr.includes('node_modules'), `${uriStr} should have been excluded`);
+    }
   });
 
-  test('should resolve workspace folder from project path', () => {
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders || folders.length === 0) {
-      // No workspace open — that's fine for this test
-      return;
-    }
+  suite('resolveWorkspaceFolder', () => {
+    test('returns the workspace folder that contains the project file', () => {
+      const folders = [path.join('C:', 'work', 'RepoA'), path.join('C:', 'work', 'RepoB')];
+      const projectFile = path.join(folders[1], 'src', 'Test.csproj');
 
-    const projectFile = `${folders[0].uri.fsPath}/test/Test.csproj`;
-    let resolvedFolder = folders[0].uri.fsPath;
+      assert.strictEqual(resolveWorkspaceFolder(projectFile, folders), folders[1]);
+    });
 
-    for (const folder of folders) {
-      if (projectFile.startsWith(folder.uri.fsPath)) {
-        resolvedFolder = folder.uri.fsPath;
-        break;
-      }
-    }
+    test('falls back to the first folder when none contain the project file', () => {
+      const folders = [path.join('C:', 'work', 'RepoA'), path.join('C:', 'work', 'RepoB')];
+      const projectFile = path.join('C:', 'elsewhere', 'Test.csproj');
 
-    assert.ok(resolvedFolder.length > 0);
-    assert.ok(
-      folders[0].uri.fsPath.startsWith(resolvedFolder) ||
-        resolvedFolder.startsWith(folders[0].uri.fsPath),
-    );
+      assert.strictEqual(resolveWorkspaceFolder(projectFile, folders), folders[0]);
+    });
+
+    test('returns the project file itself when there are no workspace folders', () => {
+      const projectFile = path.join('C:', 'work', 'Test.csproj');
+
+      assert.strictEqual(resolveWorkspaceFolder(projectFile, []), projectFile);
+    });
   });
 
-  test('should register a project only once (deduplication)', () => {
-    const known = new Set<string>();
-    const projectFile = '/workspace/src/Test.csproj';
+  suite('findOwningProjectFile', () => {
+    test('picks the deepest matching project when projects are nested', () => {
+      const outer = path.join('C:', 'work', 'Outer.csproj');
+      const inner = path.join('C:', 'work', 'Sub', 'Inner.csproj');
+      const known = new Set([outer, inner]);
+      const file = path.join('C:', 'work', 'Sub', 'Steps.cs');
 
-    // First registration
-    assert.ok(!known.has(projectFile));
-    known.add(projectFile);
+      assert.strictEqual(findOwningProjectFile(file, known), inner);
+    });
 
-    // Second registration — should be skipped
-    assert.ok(known.has(projectFile));
+    test('returns undefined when no known project covers the file', () => {
+      const known = new Set([path.join('C:', 'work', 'A.csproj')]);
+      const file = path.join('C:', 'elsewhere', 'Steps.cs');
 
-    // Unregister
-    known.delete(projectFile);
-    assert.ok(!known.has(projectFile));
+      assert.strictEqual(findOwningProjectFile(file, known), undefined);
+    });
+
+    test('ignores non-.csproj entries such as .sln/.slnx', () => {
+      const csproj = path.join('C:', 'work', 'App.csproj');
+      const known = new Set([path.join('C:', 'work', 'App.sln'), csproj]);
+      const file = path.join('C:', 'work', 'Steps.cs');
+
+      assert.strictEqual(findOwningProjectFile(file, known), csproj);
+    });
   });
 });
