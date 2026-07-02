@@ -43,15 +43,30 @@ public class Program
         // so crashes are self-diagnosing without needing to capture stderr.
         try
         {
-            var server = await LanguageServer
-                .From(options =>
-                {
-                    // Production transport: the IDE talks to the server over stdio.
-                    options.WithInput(Console.OpenStandardInput())
-                           .WithOutput(Console.OpenStandardOutput());
-                    ConfigureServer(options, ideId);
-                })
-                .ConfigureAwait(false);
+            // LanguageServer.PreInit (unlike .From) builds the DI container and constructs the
+            // server WITHOUT blocking on the client's "initialize" handshake — .Services is usable
+            // immediately. .From's await blocks inside Initialize() until a real client "initialize"
+            // arrives, which would gate ProjectPreloadListener behind the exact thing it exists to
+            // route around. See ProjectPreloadListener's remarks for the full rationale.
+            var server = LanguageServer.PreInit(options =>
+            {
+                // Production transport: the IDE talks to the server over stdio.
+                options.WithInput(Console.OpenStandardInput())
+                       .WithOutput(Console.OpenStandardOutput());
+                ConfigureServer(options, ideId);
+            });
+
+            using var preloadCts = new CancellationTokenSource();
+            var scopeManager = server.Services.GetRequiredService<ILspWorkspaceScopeManager>();
+            var logger       = server.Services.GetRequiredService<IDeveroomLogger>();
+            var preloadTask  = ProjectPreloadListener.RunAsync(scopeManager, logger, preloadCts.Token);
+
+            await server.Initialize(CancellationToken.None).ConfigureAwait(false);
+
+            // The real IDE connection is live; the side channel has no further purpose.
+            await preloadCts.CancelAsync().ConfigureAwait(false);
+            await preloadTask.ConfigureAwait(false);
+
             await server.WaitForExit.ConfigureAwait(false);
         }
         catch (Exception ex)

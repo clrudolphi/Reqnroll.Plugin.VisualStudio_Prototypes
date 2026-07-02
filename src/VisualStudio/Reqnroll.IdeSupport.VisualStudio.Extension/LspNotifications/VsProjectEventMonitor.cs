@@ -195,26 +195,8 @@ internal sealed class VsProjectEventMonitor : IDisposable
             if (!IsSolutionProject(project))
                 return;
 
-            var projectFile   = project.FullName;
-            var projectFolder = Path.GetDirectoryName(projectFile) ?? string.Empty;
-            var workspaceFolder = GetSolutionFolder();
-
-            var outputAssemblyPath = VsUtils.GetOutputAssemblyPath(project) ?? string.Empty;
-            var tfm = VsUtils.GetTargetFrameworkMoniker(project) ?? string.Empty;
-
-            var packageRefs = GetPackageReferences(project);
-
-            var paramsObj = new
-            {
-                workspaceFolder,
-                projectFile,
-                projectFolder,
-                outputAssemblyPath,
-                targetFrameworkMoniker = tfm,
-                packageReferences = packageRefs
-            };
-
-            var paramsJson = JsonConvert.SerializeObject(paramsObj, Formatting.None);
+            var paramsJson = VsProjectPayloadBuilder.BuildProjectLoadedParamsJson(
+                project, GetSolutionFolder(), _serviceProvider, _trace);
             await _pipe.SendNotificationToServerAsync("reqnroll/projectLoaded", paramsJson, ct)
                        .ConfigureAwait(false);
 
@@ -262,71 +244,18 @@ internal sealed class VsProjectEventMonitor : IDisposable
             if (!IsSolutionProject(project))
                 return;
 
-            var tfm     = VsUtils.GetTargetFrameworkMoniker(project) ?? string.Empty;
-            var entries = BuildProjectFileEntries(project);
-
-            var paramsObj = new
-            {
-                projectFile            = project.FullName,
-                targetFrameworkMoniker = tfm,
-                kind                   = 0,      // ProjectFilesKind.Baseline = 0
-                files                  = entries,
-            };
-
-            var paramsJson = JsonConvert.SerializeObject(paramsObj, Formatting.None);
+            var paramsJson = VsProjectPayloadBuilder.BuildProjectFilesParamsJson(project, _trace);
             await _pipe.SendNotificationToServerAsync("reqnroll/projectFiles", paramsJson, ct)
                        .ConfigureAwait(false);
 
             _trace.TraceInformation(
-                "VsProjectEventMonitor: Sent projectFiles baseline for '{0}' ({1} file(s))",
-                project.Name, entries.Length);
+                "VsProjectEventMonitor: Sent projectFiles baseline for '{0}'", project.Name);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             _trace.TraceEvent(TraceEventType.Warning, 0,
                 "VsProjectEventMonitor: Failed to send projectFiles for '{0}': {1}",
                 project.Name, ex.Message);
-        }
-    }
-
-    private object[] BuildProjectFileEntries(Project project)
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-        try
-        {
-            var entries = new List<object>();
-            // DTE can surface the same file on more than one path (e.g. a generated .feature.cs is
-            // nested under its .feature via DependentUpon, causing the feature node to be walked
-            // twice).  Deduplicate by full path so the server receives each file once.
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in VsUtils.GetPhysicalFileProjectItems(project))
-            {
-                var path = VsUtils.GetFilePath(item);
-                if (path is null)
-                    continue;
-
-                int role;
-                var ext = Path.GetExtension(path);
-                if (ext.Equals(".feature", StringComparison.OrdinalIgnoreCase))
-                    role = 0;   // ProjectFileRole.Feature = 0
-                else if (ext.Equals(".cs", StringComparison.OrdinalIgnoreCase))
-                    role = 1;   // ProjectFileRole.Binding = 1
-                else
-                    continue;
-
-                if (!seen.Add(path))
-                    continue;
-
-                entries.Add(new { path, role, added = true });
-            }
-            return entries.ToArray();
-        }
-        catch (Exception ex)
-        {
-            _trace.TraceEvent(TraceEventType.Warning, 0,
-                "VsProjectEventMonitor: Could not enumerate project items for '{0}': {1}",
-                project.Name, ex.Message);
-            return Array.Empty<object>();
         }
     }
 
@@ -345,29 +274,6 @@ internal sealed class VsProjectEventMonitor : IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return VsUtils.IsSolutionProject(project);
-    }
-
-    private object[] GetPackageReferences(Project project)
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-        try
-        {
-            return VsUtils.GetInstalledNuGetPackages(_serviceProvider, project.FullName)
-                .Select(p => (object)new
-                {
-                    packageId   = p.Id,
-                    version     = p.Version,
-                    installPath = p.InstallPath ?? string.Empty
-                })
-                .ToArray();
-        }
-        catch (Exception ex)
-        {
-            _trace.TraceEvent(TraceEventType.Warning, 0,
-                "VsProjectEventMonitor: Could not read NuGet packages for '{0}': {1}",
-                project.Name, ex.Message);
-            return Array.Empty<object>();
-        }
     }
 
     private void FireAndForget(Func<CancellationToken, Task> action)

@@ -12,32 +12,26 @@ namespace Reqnroll.IdeSupport.VisualStudio.Extension;
 /// Table (RDT) so the LSP's <c>textDocument/didOpen</c> fires for them once the server starts.
 /// </summary>
 /// <remarks>
-/// Used by <see cref="ReqnrollPluginPackage"/> (on solution load) and
-/// <see cref="ReqnrollLanguageClient.OnServerInitializationResultAsync"/> (post-server-init flush).
-/// All public methods must be called from the UI thread.
+/// Called only from <see cref="ReqnrollLanguageClient.OnServerInitializationResultAsync"/>
+/// (post-server-init flush), after VS's real LSP handshake has already completed for whichever
+/// feature tab triggered activation. All public methods must be called from the UI thread.
 /// <para>
 /// This is deliberately <b>passive</b>: it never forces the <c>LanguageServerProvider</c> to
 /// activate. An earlier "invisible open" that force-activated the provider was removed — it raced
 /// with VS's own restore of feature tabs and bounced the provider (two server processes, flickering
 /// C# code lenses, broken feature state). The provider activates the normal way: when VS realizes a
-/// restored feature tab, or the user opens a feature file.
+/// restored feature tab, or the user opens a feature file. Moving this call any earlier (e.g. to
+/// mirror the eager server-startup work in <c>ExtensionEntrypoint.OnInitializedAsync</c>) would
+/// reintroduce that race — and now also risks handing out an already-consumed connection, since
+/// <c>LspServerConnectionService.GetConnectionAsync</c> returns the same cached pipe on a repeat
+/// <c>CreateServerConnectionAsync</c> call.
 /// </para>
 /// </remarks>
 internal static class VsStubFrameInitializer
 {
     /// <summary>
-    /// Realizes any restored <c>.feature</c> stub frames at solution load. Passive — does not force
-    /// <c>LanguageServerProvider</c> activation.
-    /// </summary>
-    public static Task EnsureFeatureFileActivatedAsync(
-        IServiceProvider serviceProvider,
-        TraceSource traceSource,
-        CancellationToken cancellationToken)
-        => ForceInitFeatureStubsAsync(serviceProvider, traceSource, cancellationToken);
-
-    /// <summary>
-    /// Forces initialization of <c>.feature</c> stub frames discovered via RDT scan. Called at
-    /// solution load and again after the LSP server initialises to flush remaining background stubs.
+    /// Forces initialization of <c>.feature</c> stub frames discovered via RDT scan. Called after
+    /// the LSP server initialises to flush remaining background stubs.
     /// </summary>
     public static async Task ForceInitFeatureStubsAsync(
         IServiceProvider serviceProvider,
