@@ -110,6 +110,14 @@ internal sealed class LspServerConnectionService : IDisposable
             "LSPServer",
             "Reqnroll.IdeSupport.LSP.Server.exe");
 
+    /// <summary>
+    /// The command-line arguments passed to the LSP server process: <c>--ide</c> selects the
+    /// semantic token profile, <c>--log-level</c> keeps the server's own file/protocol logging in
+    /// step with the client's default rather than the server falling back to its own default
+    /// independently. Extracted as a constant so it's unit-testable without spawning a process.
+    /// </summary>
+    internal const string ServerArguments = "--ide visualstudio --log-level Warning";
+
     private async Task<IDuplexPipe?> StartAsync()
     {
         var serverExe = ResolveServerExePath(typeof(LspServerConnectionService).Assembly.Location);
@@ -134,9 +142,7 @@ internal sealed class LspServerConnectionService : IDisposable
                 RedirectStandardOutput = true,
                 RedirectStandardError  = true,
                 CreateNoWindow         = true,
-                // Tell the LSP server which IDE is connecting so it selects the correct
-                // semantic token profile (legend + DeveroomTag→token type mapping).
-                Arguments              = "--ide visualstudio",
+                Arguments              = ServerArguments,
             };
 
             _serverProcess = Process.Start(psi)

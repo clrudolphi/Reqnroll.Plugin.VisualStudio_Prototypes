@@ -163,7 +163,7 @@
           "type": "string",
           "enum": ["off", "messages", "verbose"],
           "default": "off",
-          "description": "Traces the communication between VS Code and the Reqnroll LSP server. When set to 'verbose', a log file is also written to the Reqnroll log directory."
+          "description": "Traces the communication between VS Code and the Reqnroll LSP server, and also controls the server's own log verbosity ('off' -> Warning, 'messages' -> Info, 'verbose' -> Verbose). When set to 'verbose', a log file is also written to the Reqnroll log directory. Requires a window reload to take effect on the running server."
         }
       }
     },

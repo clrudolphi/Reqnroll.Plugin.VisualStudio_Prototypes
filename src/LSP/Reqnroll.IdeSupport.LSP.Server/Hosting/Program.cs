@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.Diagnostics;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
@@ -34,10 +35,12 @@ public class Program
         // The semantic token legend no longer varies by IDE, but the identifier is retained for
         // features that may need to vary their behaviour per IDE (e.g. future static-vs-dynamic
         // capability registration decisions).
-        var ideId = args
-            .SkipWhile(a => !string.Equals(a, "--ide", StringComparison.OrdinalIgnoreCase))
-            .Skip(1)
-            .FirstOrDefault();
+        var ideId = ParseArg(args, "--ide");
+
+        // Each IDE's glue component may pass --log-level <level> (Off/Error/Warning/Info/Verbose)
+        // when spawning the server. Defaults to Warning when absent so a normal session doesn't
+        // write maximum-verbosity logs indefinitely; pass --log-level Verbose for full tracing.
+        var logLevel = ParseLogLevel(args);
 
         // Write any unhandled startup exception to a file next to the LSP inspector logs
         // so crashes are self-diagnosing without needing to capture stderr.
@@ -53,7 +56,7 @@ public class Program
                 // Production transport: the IDE talks to the server over stdio.
                 options.WithInput(Console.OpenStandardInput())
                        .WithOutput(Console.OpenStandardOutput());
-                ConfigureServer(options, ideId);
+                ConfigureServer(options, ideId, logLevel);
             });
 
             using var preloadCts = new CancellationTokenSource();
@@ -104,11 +107,18 @@ public class Program
     /// <see langword="null"/> when absent.  Currently unused by the semantic-token pipeline
     /// (the legend is shared across IDEs); retained for features that may vary behaviour per IDE.
     /// </param>
-    internal static void ConfigureServer(LanguageServerOptions options, string? clientIde = null)
+    /// <param name="logLevel">
+    /// The <c>--log-level</c> verbosity requested by the client, defaulting to
+    /// <see cref="TraceLevel.Warning"/>. Drives both the file-backed <see cref="IDeveroomLogger"/>
+    /// and the OmniSharp protocol-logging minimum level, so wire-level debugging and file logging
+    /// stay in lockstep unless a caller explicitly asks for more (e.g. <c>--log-level Verbose</c>).
+    /// </param>
+    internal static void ConfigureServer(LanguageServerOptions options, string? clientIde = null,
+        TraceLevel logLevel = TraceLevel.Warning)
     {
         options.ConfigureLogging(logging =>
         {
-            logging.SetMinimumLevel(LogLevel.Trace);
+            logging.SetMinimumLevel(ToLogLevel(logLevel));
             logging.AddLanguageProtocolLogging();
         });
 
@@ -127,7 +137,7 @@ public class Program
             // notification to two handler instances (the transient from the scan and 
             // the singleton from the explicit call).
             .AddMediatR(typeof(Program).Assembly)
-            .AddReqnrollLspCoreServices(clientIde)
+            .AddReqnrollLspCoreServices(clientIde, logLevel)
             .AddReqnrollProjectSystem()
             .AddReqnrollEditorServices()
             .AddReqnrollLspHandlers();
@@ -184,4 +194,31 @@ public class Program
             return Task.CompletedTask;
         });
     }
+
+    /// <summary>
+    /// Maps the <see cref="IDeveroomLogger"/> verbosity scale onto
+    /// <see cref="Microsoft.Extensions.Logging.LogLevel"/> for the OmniSharp protocol-logging pipeline.
+    /// </summary>
+    internal static LogLevel ToLogLevel(TraceLevel level) => level switch
+    {
+        TraceLevel.Off     => LogLevel.None,
+        TraceLevel.Error   => LogLevel.Error,
+        TraceLevel.Warning => LogLevel.Warning,
+        TraceLevel.Info    => LogLevel.Information,
+        TraceLevel.Verbose => LogLevel.Trace,
+        _                  => LogLevel.Warning
+    };
+
+    /// <summary>Returns the value following <paramref name="flag"/> in <paramref name="args"/>, or <see langword="null"/> when absent.</summary>
+    internal static string? ParseArg(string[] args, string flag)
+        => args
+            .SkipWhile(a => !string.Equals(a, flag, StringComparison.OrdinalIgnoreCase))
+            .Skip(1)
+            .FirstOrDefault();
+
+    /// <summary>Parses <c>--log-level</c> from <paramref name="args"/>, defaulting to <see cref="TraceLevel.Warning"/> when absent or unrecognized.</summary>
+    internal static TraceLevel ParseLogLevel(string[] args)
+        => Enum.TryParse<TraceLevel>(ParseArg(args, "--log-level"), ignoreCase: true, out var parsedLevel)
+            ? parsedLevel
+            : TraceLevel.Warning;
 }

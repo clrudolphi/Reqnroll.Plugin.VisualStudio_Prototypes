@@ -34,4 +34,10 @@ public class LspServerConnectionServiceTests
 
         path.Should().Be(@"D:\some\other\deep\path\LSPServer\Reqnroll.IdeSupport.LSP.Server.exe");
     }
+
+    [Fact]
+    public void Server_arguments_identify_the_ide_and_a_quiet_default_log_level()
+    {
+        LspServerConnectionService.ServerArguments.Should().Be("--ide visualstudio --log-level Warning");
+    }
 }

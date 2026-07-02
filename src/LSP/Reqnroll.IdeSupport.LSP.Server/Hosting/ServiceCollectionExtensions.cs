@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Reqnroll.IdeSupport.Common;
@@ -48,10 +49,11 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers core infrastructure and cross-cutting services.
     /// </summary>
-    public static IServiceCollection AddReqnrollLspCoreServices(this IServiceCollection services, string? clientIde)
+    public static IServiceCollection AddReqnrollLspCoreServices(this IServiceCollection services, string? clientIde,
+        TraceLevel logLevel = TraceLevel.Warning)
     {
         return services
-            .AddSingleton(new ClientIdeContext(clientIde))
+            .AddSingleton(new ClientIdeContext(clientIde, logLevel))
             .AddSingleton<IDeveroomLogger, LspDeveroomLogger>()
             .AddSingleton<IIdeScope, LspIdeScope>()
             .AddSingleton<IMonitoringService>(sp => NullMonitoringService.Instance)
