@@ -7,8 +7,9 @@ async function main(): Promise<void> {
     // The folder containing the Extension Manifest (package.json)
     const extensionDevelopmentPath = path.resolve(__dirname, '..', '..');
 
-    // The path to the extension test script
-    const extensionTestsPath = path.resolve(__dirname, 'extension.test');
+    // The path to the test bootstrapper (registers Mocha's suite/test globals, then loads
+    // extension.test.js which pulls in the other suites via its own imports).
+    const extensionTestsPath = path.resolve(__dirname, 'index');
 
     // Download VS Code, unzip it and run the integration test
     await runTests({
