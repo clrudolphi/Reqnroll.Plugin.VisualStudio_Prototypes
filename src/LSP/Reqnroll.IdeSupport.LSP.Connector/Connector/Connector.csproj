@@ -17,8 +17,13 @@
          connectors are automatically included in the VSIX without any Extension-side changes.
          AppContext.BaseDirectory at runtime is {vsix-install}\LSPServer\, and
          OutProcReqnrollConnector.GetConnectorsFolder() appends "Connectors\", so the
-         expected runtime path is LSPServer\Connectors\Reqnroll-Generic-{tfm}\. -->
-    <_OutputCopyLocation>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\Reqnroll.IdeSupport.LSP.Server\bin\$(Configuration)\net10.0\win-x64\Connectors\Reqnroll-Generic-$(TargetFramework)'))</_OutputCopyLocation>
+         expected runtime path is LSPServer\Connectors\Reqnroll-Generic-{tfm}\.
+         _ConnectorServerRid is passed in by Reqnroll.IdeSupport.LSP.Server.csproj's
+         BuildConnector target so the staged output lands next to whichever RID the
+         server itself is being built/published for (win-x64/linux-x64/osx-x64/osx-arm64);
+         it defaults to win-x64 for plain VS/VSIX builds that don't set it. -->
+    <_ConnectorServerRid Condition="'$(_ConnectorServerRid)' == ''">win-x64</_ConnectorServerRid>
+    <_OutputCopyLocation>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\Reqnroll.IdeSupport.LSP.Server\bin\$(Configuration)\net10.0\$(_ConnectorServerRid)\Connectors\Reqnroll-Generic-$(TargetFramework)'))</_OutputCopyLocation>
     <NoWarn>NETSDK1138;NETSDK1233;MSB3277</NoWarn>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     <!--

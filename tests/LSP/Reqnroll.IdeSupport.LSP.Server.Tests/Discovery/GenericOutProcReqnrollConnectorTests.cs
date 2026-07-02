@@ -67,7 +67,9 @@ public class GenericOutProcReqnrollConnectorTests
         var (path, args) = Resolve(tfm);
 
         // Launcher is the dotnet host; the connector dll is passed as an "exec" argument.
-        path.Should().EndWith("dotnet.exe");
+        // The host binary name is OS-dependent ("dotnet.exe" on Windows, "dotnet" elsewhere) -
+        // see OutProcReqnrollConnector.GetDotNetCommand / ResolveNonWindowsDotNetCommand.
+        path.Should().EndWith(OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
         args.Should().HaveCount(2);
         args[0].Should().Be("exec");
         args[1].Should().Be(Path.Combine(_extensionFolder, expectedRelative));
@@ -80,7 +82,7 @@ public class GenericOutProcReqnrollConnectorTests
         // net8.0 default seeded at the top of GetConnectorPath.
         var (path, args) = Resolve(".NETCoreApp");
 
-        path.Should().EndWith("dotnet.exe");
+        path.Should().EndWith(OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
         args[1].Should().Be(Path.Combine(_extensionFolder, @"Reqnroll-Generic-net8.0\reqnroll-ide-connector.dll"));
     }
 }

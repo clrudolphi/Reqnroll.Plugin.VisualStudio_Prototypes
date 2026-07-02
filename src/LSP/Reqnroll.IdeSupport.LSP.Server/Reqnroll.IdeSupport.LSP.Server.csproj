@@ -44,10 +44,17 @@
        pattern: it triggers the connector's outer build, which dispatches each TFM inner
        build and runs CustomAfterBuild (which stages the connector outputs into this
        project's Connectors\ output folder) before this project begins compiling. -->
+  <!-- RuntimeIdentifier/SelfContained are global properties: when the server itself is
+       published self-contained for a specific RID, MSBuild would otherwise leak those
+       into the connector's nested build below. The connector is always a
+       framework-dependent, per-TFM build regardless of which RID the server targets
+       (see docs on _ConnectorServerRid in Connector.csproj), so they're cleared here
+       and the RID is instead threaded through via _ConnectorServerRid, which only
+       affects where the build output is staged. -->
   <Target Name="BuildConnector" BeforeTargets="Build">
     <MSBuild Projects="$(MSBuildThisFileDirectory)..\Reqnroll.IdeSupport.LSP.Connector\Connector\Connector.csproj"
              Targets="Build"
-             Properties="Configuration=$(Configuration)" />
+             Properties="Configuration=$(Configuration);_ConnectorServerRid=$(RuntimeIdentifier);RuntimeIdentifier=;SelfContained=false" />
   </Target>
 
   <!-- Copy Connector binaries into the publish output so reflection-based binding
