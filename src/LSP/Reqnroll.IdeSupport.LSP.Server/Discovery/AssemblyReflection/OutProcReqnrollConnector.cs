@@ -187,7 +187,21 @@ public abstract class OutProcReqnrollConnector
         return GetDotNetCommand();
     }
 
-    private string GetDotNetCommand() => Path.Combine(GetDotNetInstallLocation(), "dotnet.exe");
+    private string GetDotNetCommand()
+    {
+        if (!OperatingSystem.IsWindows())
+            return ResolveNonWindowsDotNetCommand(Environment.GetEnvironmentVariable("DOTNET_ROOT"));
+
+        return Path.Combine(GetDotNetInstallLocation(), "dotnet.exe");
+    }
+
+    // No Windows-style Program Files layout on Linux/macOS. Prefer an explicit DOTNET_ROOT
+    // (set by the .NET install scripts / CI images); otherwise rely on "dotnet" being
+    // resolvable via PATH, which is the standard install on Linux/macOS.
+    // Extracted as a pure function (taking the env var value as a parameter) so it can be
+    // unit-tested without depending on the host OS actually being non-Windows.
+    internal static string ResolveNonWindowsDotNetCommand(string dotNetRoot) =>
+        string.IsNullOrEmpty(dotNetRoot) ? "dotnet" : Path.Combine(dotNetRoot, "dotnet");
 
     protected string GetConnectorsFolder()
     {

@@ -64,4 +64,34 @@ public class OutProcReqnrollConnectorTests
         // GetConnectorType() strips the "OutProcReqnrollConnector" suffix from the type name.
         result.ConnectorType.Should().Be("Fake");
     }
+
+    // ── Non-Windows dotnet-host resolution (see GetDotNetCommand) ──────────────
+    // Exercised directly against the extracted pure function so both branches are
+    // covered regardless of which OS actually runs the test.
+
+    [Fact]
+    public void ResolveNonWindowsDotNetCommand_falls_back_to_bare_dotnet_when_DOTNET_ROOT_is_null()
+    {
+        var command = OutProcReqnrollConnector.ResolveNonWindowsDotNetCommand(null);
+
+        command.Should().Be("dotnet", "PATH resolution is the standard install on Linux/macOS");
+    }
+
+    [Fact]
+    public void ResolveNonWindowsDotNetCommand_falls_back_to_bare_dotnet_when_DOTNET_ROOT_is_empty()
+    {
+        var command = OutProcReqnrollConnector.ResolveNonWindowsDotNetCommand("");
+
+        command.Should().Be("dotnet", "PATH resolution is the standard install on Linux/macOS");
+    }
+
+    [Fact]
+    public void ResolveNonWindowsDotNetCommand_prefers_DOTNET_ROOT_when_set()
+    {
+        var dotNetRoot = Path.Combine(Path.GetTempPath(), "dotnet-root");
+
+        var command = OutProcReqnrollConnector.ResolveNonWindowsDotNetCommand(dotNetRoot);
+
+        command.Should().Be(Path.Combine(dotNetRoot, "dotnet"));
+    }
 }
