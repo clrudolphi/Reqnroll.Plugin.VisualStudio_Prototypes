@@ -267,6 +267,8 @@ Reqnroll.IdeSupport/
 
 The server is a self-contained executable built on `OmniSharp.Extensions.LanguageServer`. It is embedded in each IDE extension package and launched as a child process on extension activation.
 
+> **As-built note (Visual Studio)**: "extension activation" is literal for VS — see [§6.2](#62-visual-studio) for how `LspServerConnectionService` moves process launch off the `.feature`-file-open path onto extension load.
+
 ### Capability Registration
 
 OmniSharp supports both static (declared in `initialize` response) and dynamic (via `client/registerCapability`) registration. Visual Studio has known issues with dynamic registration for some capabilities (see per-feature notes).
@@ -502,6 +504,17 @@ A hybrid extension using **VS.Extensibility** as the primary API, with **VSSDK**
 | New Project / Item Wizards | VSSDK | Wizard interfaces not in VS.Extensibility |
 
 The embedded `LSPServer.exe` is published to the VSIX under the `LSPServer/` subfolder and launched on extension activation with `--client visualstudio`.
+
+**As-built note — eager server startup (`LspServerConnectionService`)**: `LanguageServerProvider.CreateServerConnectionAsync` is VS-invoked and lazy — VS only calls it once a document matching `ReqnrollLanguageClient`'s `DocumentFilter` (`.feature`) is opened/realized. Historically this meant process launch, pipe construction, and interceptor wiring all happened cold on the first `.feature`-file-open, on the critical path to the editor becoming usable.
+
+`LspServerConnectionService` (`src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Extension/LspInterception/LspServerConnectionService.cs`) moves that work earlier without changing VS's own activation contract (VS.Extensibility gives no API to hand VS a pre-built connection ahead of its own call). The mechanism:
+
+- Registered as a DI singleton (`ExtensionEntrypoint.InitializeServices`) and constructor-injected into `ReqnrollLanguageClient`.
+- VS.Extensibility constructs `ReqnrollLanguageClient` at extension load — to read `LanguageServerProviderConfiguration` — well before any `.feature` file is open. Resolving the constructor parameter therefore constructs `LspServerConnectionService` at that same early point.
+- The service's constructor kicks off process launch + pipe/interceptor construction immediately via `ThreadHelper.JoinableTaskFactory.RunAsync`, caching the resulting `JoinableTask<IDuplexPipe?>`.
+- `CreateServerConnectionAsync` — whenever VS eventually calls it — just awaits `LspServerConnectionService.GetConnectionAsync()`, which returns the already-in-flight or already-completed task instead of starting the process cold.
+- `VsProjectEventMonitor` and the resolved `IAnalyticsTransmitter` are still constructed at the pre-existing safe point (`OnServerInitializationResultAsync`, after VS's own `initialize`/`initialized` handshake completes) and stored on settable properties of the service (`ProjectMonitor`, `AnalyticsTransmitter`) so interceptors built during eager startup can reference them lazily. Pushing project state to the server *before* VS's own handshake completes was considered and deliberately deferred — the Reqnroll LSP server's tolerance for custom notifications arriving before `initialize` has not been verified, and getting it wrong risks a protocol-ordering bug. This is a documented follow-up, not implemented here.
+- **Known limitation**: the service hands out the same cached pipe on every `GetConnectionAsync()` call. If VS activates the provider more than once in a session — the still-open multi-tab-restore duplicate-server race (see project memory `vs-package-duplicate-server-q23`) — the second caller gets the already-consumed pipe rather than a fresh process. Resolving that race is tracked separately and was out of scope for making startup eager.
 
 **Project membership (`reqnroll/projectFiles`)**: The current `VsProjectEventMonitor` sources `reqnroll/projectLoaded` from **EnvDTE** (`Project.FullName`, output path, TFM, package references) — cheap synchronous property reads. Producing an *authoritative* membership manifest is a different, heavier path: EnvDTE `ProjectItems` is unreliable for SDK-style projects, glob-defaulted includes, `<Compile Remove>`, conditional items, and linked-file on-disk paths, so the manifest must instead come from **CPS** (`UnconfiguredProject` / `ConfiguredProject` project-subscription dataflow) or an MSBuild evaluation. That source is async and updates on its own schedule, which is why membership rides on the separate `reqnroll/projectFiles` notification rather than blocking `projectLoaded`. The monitor must also subscribe to **item add/remove and `.csproj`-change** events (not only build completion, as today) so it can emit `delta` updates and restore ownership when a file is re-included.
 

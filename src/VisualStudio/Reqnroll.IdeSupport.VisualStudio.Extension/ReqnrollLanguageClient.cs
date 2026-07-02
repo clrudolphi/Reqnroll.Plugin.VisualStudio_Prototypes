@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,10 +7,8 @@ using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.LanguageServer;
 using Microsoft.VisualStudio.RpcContracts.LanguageServerProvider;
 using Microsoft.VisualStudio.Shell;
-using Nerdbank.Streams;
 using Reqnroll.IdeSupport.Common.Analytics;
 using Reqnroll.IdeSupport.Common.Diagnostics;
-using Reqnroll.IdeSupport.VisualStudio.Extension.Classification;
 using Reqnroll.IdeSupport.VisualStudio.Extension.CommentToggle;
 using Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
 using Reqnroll.IdeSupport.VisualStudio.Extension.FindUnusedStepDefinitions;
@@ -35,12 +32,7 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
     private readonly StepCodeLensState _stepCodeLensState;
     private readonly CommentToggleState _commentToggleState;
     private readonly RenameStepState _renameStepState;
-    private Process? _serverProcess;
-    private LspInspectorLogger? _inspectorLogger;
-    private LspInterceptingPipe? _interceptingPipe;
-    private ChildProcessJob? _childJob;
-    private VsProjectEventMonitor? _projectMonitor;
-    private IAnalyticsTransmitter? _analyticsTransmitter;
+    private readonly LspServerConnectionService _connectionService;
 
     public ReqnrollLanguageClient(
         ExtensionCore container,
@@ -51,7 +43,8 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         GoToHooksState goToHooksState,
         StepCodeLensState stepCodeLensState,
         CommentToggleState commentToggleState,
-        RenameStepState renameStepState)
+        RenameStepState renameStepState,
+        LspServerConnectionService connectionService)
         : base(container, extensibilityObject)
     {
         _traceSource                    = traceSource;
@@ -61,6 +54,12 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         _stepCodeLensState              = stepCodeLensState;
         _commentToggleState             = commentToggleState;
         _renameStepState                = renameStepState;
+        // Constructor-injecting LspServerConnectionService is what makes server startup eager:
+        // VS.Extensibility constructs this class (to read LanguageServerProviderConfiguration)
+        // well before any .feature file is opened, which resolves the singleton service and
+        // starts its constructor's fire-and-forget process launch immediately. See
+        // LspServerConnectionService's remarks for the full rationale.
+        _connectionService   = connectionService;
         _fileLogger          = new SynchronousFileLogger();
         _traceSource.TraceInformation("ReqnrollLanguageClient: Instance created.");
         _fileLogger.LogInfo(
@@ -79,117 +78,24 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
     /// <inheritdoc />
     public override async Task<IDuplexPipe?> CreateServerConnectionAsync(CancellationToken cancellationToken)
     {
-        var serverExe = Path.Combine(
-            Path.GetDirectoryName(typeof(ReqnrollLanguageClient).Assembly.Location)!,
-            "LSPServer",
-            "Reqnroll.IdeSupport.LSP.Server.exe");
+        _traceSource.TraceInformation("ReqnrollLanguageClient: CreateServerConnectionAsync called — awaiting eager connection.");
+        _fileLogger.LogInfo("ReqnrollLanguageClient: CreateServerConnectionAsync — awaiting eager connection.");
 
-        _traceSource.TraceInformation("ReqnrollLanguageClient: CreateServerConnectionAsync called. Server exe path: {0}", serverExe);
-        _fileLogger.LogInfo($"ReqnrollLanguageClient: CreateServerConnectionAsync — server exe: {serverExe}");
+        // Startup (process launch + pipe construction) was kicked off eagerly when
+        // LspServerConnectionService was constructed — see its remarks. This just awaits
+        // whatever is already in flight (or already completed) rather than starting it now.
+        var pipe = await _connectionService.GetConnectionAsync().ConfigureAwait(false);
 
-        if (!File.Exists(serverExe))
+        if (pipe is null)
         {
             _traceSource.TraceEvent(TraceEventType.Error, 0,
-                "ReqnrollLanguageClient: Server executable not found at '{0}'. Disabling.", serverExe);
-            _fileLogger.LogWarning($"ReqnrollLanguageClient: Server executable not found: {serverExe}");
+                "ReqnrollLanguageClient: LSP server connection unavailable. Disabling.");
+            _fileLogger.LogWarning("ReqnrollLanguageClient: LSP server connection unavailable. Disabling.");
             Enabled = false;
             return null;
         }
 
-        try
-        {
-            var psi = new ProcessStartInfo(serverExe)
-            {
-                UseShellExecute        = false,
-                RedirectStandardInput  = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError  = true,
-                CreateNoWindow         = true,
-                // Tell the LSP server which IDE is connecting so it selects the correct
-                // semantic token profile (legend + DeveroomTag→token type mapping).
-                Arguments              = "--ide visualstudio",
-            };
-
-            _serverProcess = Process.Start(psi)
-                ?? throw new InvalidOperationException("Process.Start returned null.");
-
-            // Assign to a kill-on-close Job Object so the server is terminated by the OS
-            // when this VS process exits, even if Dispose is never called.
-            try
-            {
-                _childJob = new ChildProcessJob();
-                _childJob.AddProcess(_serverProcess);
-            }
-            catch (Exception ex)
-            {
-                _traceSource.TraceEvent(TraceEventType.Warning, 0,
-                    "ReqnrollLanguageClient: Could not assign server to Job Object: {0}", ex.Message);
-            }
-
-            _serverProcess.ErrorDataReceived += (_, e) =>
-            {
-                if (e.Data is not null)
-                    _traceSource.TraceEvent(TraceEventType.Warning, 0, "LSPServer stderr: {0}", e.Data);
-            };
-            _serverProcess.BeginErrorReadLine();
-
-            _traceSource.TraceInformation("ReqnrollLanguageClient: Server process started (PID {0}).", _serverProcess.Id);
-
-            IDuplexPipe rawPipe = new DuplexPipe(
-                _serverProcess.StandardOutput.BaseStream.UsePipeReader(),
-                _serverProcess.StandardInput.BaseStream.UsePipeWriter());
-
-            // Build the LSP Inspector log file path, unique per session.
-            var logDir     = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Reqnroll");
-            var logFile    = Path.Combine(logDir, $"reqnroll-vs-inspector-{DateTime.Now:yyyyMMdd-HHmmss}.log");
-            _fileLogger.LogInfo($"ReqnrollLanguageClient: Server process started (PID {_serverProcess.Id}). Inspector log: {logFile}");
-            _inspectorLogger = new LspInspectorLogger(logFile, _traceSource);
-
-            // Observes semanticTokens traffic (both directions) and caches the decoded tokens so the
-            // editor classifier can colour .feature files with Reqnroll's custom classifications,
-            // bypassing VS's fixed built-in token-type→classification table. One instance is shared
-            // by both pipelines so it sees requests (VS→Server) and their responses (Server→VS).
-            var semanticTokensInterceptor = new SemanticTokensClassificationInterceptor(
-                SemanticTokenClassificationStore.Instance, _traceSource);
-
-            // Tracks .cs files created by the scaffold code action and injects a
-            // reqnroll/projectFiles delta before the server sees textDocument/didOpen.
-            // Uses a lazy reference because _projectMonitor is created after the pipe.
-            var scaffoldInterceptor = new ScaffoldTrackingInterceptor(
-                () => _projectMonitor, _traceSource);
-
-            // Watches textDocument/didChange on .cs files and invalidates code lenses
-            // so VS re-queries the server for updated usage counts after a binding edit.
-            var codeLensRefreshInterceptor = new CodeLensRefreshInterceptor(
-                _stepCodeLensState, _traceSource);
-
-            // Send pipeline:   VS → [logger, semanticTokens, scaffold, codeLensRefresh] → Server
-            // Receive pipeline: Server → [logger, semanticTokens, scaffold, codeLensRefresh, telemetry] → VS
-            // codeLensRefresh is on both pipelines: send watches .cs didChange; receive watches the
-            // server's reqnroll/refreshCodeLens push after a full registry replacement.
-            var sendInterceptors    = new ILspMessageInterceptor[] { _inspectorLogger, semanticTokensInterceptor, scaffoldInterceptor, codeLensRefreshInterceptor };
-
-            // Telemetry interceptor: lazy reference because _analyticsTransmitter is resolved
-            // from MEF on the main thread during OnServerInitializationResultAsync.
-            var telemetryInterceptor = new TelemetryEventInterceptor(() => _analyticsTransmitter, _traceSource);
-            var receiveInterceptors = new ILspMessageInterceptor[]
-                { _inspectorLogger, semanticTokensInterceptor, scaffoldInterceptor, codeLensRefreshInterceptor, telemetryInterceptor };
-
-            _interceptingPipe = new LspInterceptingPipe(rawPipe, sendInterceptors, receiveInterceptors, _traceSource);
-            // Pass CancellationToken.None: the pumps must live for the entire connection
-            // lifetime, not just for the duration of this async creation call.  The pipe's
-            // own _cts (cancelled in Dispose) provides the shutdown signal.
-            await _interceptingPipe.StartAsync(CancellationToken.None).ConfigureAwait(false);
-
-            return _interceptingPipe.VsFacingPipe;
-        }
-        catch (Exception ex)
-        {
-            _traceSource.TraceEvent(TraceEventType.Error, 0,
-                "ReqnrollLanguageClient: Failed to start server: {0}", ex);
-            Enabled = false;
-            return null;
-        }
+        return pipe;
     }
 
     /// <inheritdoc />
@@ -216,16 +122,17 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         _fileLogger.LogInfo($"ReqnrollLanguageClient: Server initialized successfully ({serverInitializationResult}).");
 
         // Start monitoring VS project events and flush the current solution state.
-        if (_interceptingPipe is not null)
+        var interceptingPipe = _connectionService.InterceptingPipe;
+        if (interceptingPipe is not null)
         {
             // GoToHooksService and FindStepUsagesService use only
             // LspInterceptingPipe + TraceSource — no COM, safe here.
-            _findStepUsagesState.Service            = new FindStepUsagesService(_interceptingPipe, _traceSource);
-            _findUnusedStepDefinitionsState.Service = new FindUnusedStepDefinitionsService(_interceptingPipe, _traceSource);
-            _goToHooksState.Service                 = new GoToHooksService(_interceptingPipe, _traceSource);
-            _stepCodeLensState.Service              = new StepCodeLensService(_interceptingPipe, _traceSource);
-            _commentToggleState.Service             = new CommentToggleService(_interceptingPipe, _traceSource);
-            _renameStepState.Service                 = new RenameStepService(_interceptingPipe, _traceSource);
+            _findStepUsagesState.Service            = new FindStepUsagesService(interceptingPipe, _traceSource);
+            _findUnusedStepDefinitionsState.Service = new FindUnusedStepDefinitionsService(interceptingPipe, _traceSource);
+            _goToHooksState.Service                 = new GoToHooksService(interceptingPipe, _traceSource);
+            _stepCodeLensState.Service              = new StepCodeLensService(interceptingPipe, _traceSource);
+            _commentToggleState.Service             = new CommentToggleService(interceptingPipe, _traceSource);
+            _renameStepState.Service                 = new RenameStepService(interceptingPipe, _traceSource);
 
             // Set the VSSDK command filter redirect so the keyboard shortcut interception
             // for Edit.CommentSelection/UncommentSelection/ToggleLineComment calls our service.
@@ -240,10 +147,10 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
                     .SwitchToMainThreadAsync(cancellationToken);
 
                 var serviceProvider = ServiceProvider.GlobalProvider;
-                _analyticsTransmitter = ResolveMefService<IAnalyticsTransmitter>(serviceProvider);
+                _connectionService.AnalyticsTransmitter = ResolveMefService<IAnalyticsTransmitter>(serviceProvider);
                 _traceSource.TraceInformation(
                     "ReqnrollLanguageClient: IAnalyticsTransmitter resolved: {0}",
-                    _analyticsTransmitter is not null ? "yes" : "no");
+                    _connectionService.AnalyticsTransmitter is not null ? "yes" : "no");
                 _findStepUsagesState.Renderer            = new FindStepUsagesRenderer(serviceProvider, _traceSource);
                 _findUnusedStepDefinitionsState.Renderer = new FindUnusedStepDefinitionsRenderer(serviceProvider, _traceSource);
 
@@ -252,11 +159,11 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
                 _stepCodeLensState.FindUsagesRenderer = _findStepUsagesState.Renderer;
 
                 _fileLogger.LogInfo("ReqnrollLanguageClient: Creating VsProjectEventMonitor.");
-                _projectMonitor = new VsProjectEventMonitor(
-                    _interceptingPipe, _traceSource, serviceProvider);
+                _connectionService.ProjectMonitor = new VsProjectEventMonitor(
+                    interceptingPipe, _traceSource, serviceProvider);
 
                 _fileLogger.LogInfo("ReqnrollLanguageClient: Sending initial projects.");
-                await _projectMonitor
+                await _connectionService.ProjectMonitor
                     .SendInitialProjectsAsync(cancellationToken)
                     .ConfigureAwait(false);
 
@@ -285,8 +192,10 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         {
             _fileLogger.LogInfo("ReqnrollLanguageClient: Disposing — shutting down server connection.");
 
-            _projectMonitor?.Dispose();
-            _projectMonitor = null;
+            // ProjectMonitor is UI-thread/COM-bound, so it is disposed here (this method already
+            // asserts the UI thread above) rather than in LspServerConnectionService.Dispose.
+            _connectionService.ProjectMonitor?.Dispose();
+            _connectionService.ProjectMonitor = null;
 
             _findStepUsagesState.Service             = null;
             _findStepUsagesState.Renderer            = null;
@@ -299,18 +208,9 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
             _commentToggleState.Service = null;
             _renameStepState.Service = null;
 
-            _interceptingPipe?.Dispose();
-            _interceptingPipe = null;
-
-            _inspectorLogger?.Dispose();
-            _inspectorLogger = null;
-
-            try { _serverProcess?.Kill(); } catch { /* best-effort */ }
-            _serverProcess?.Dispose();
-            _serverProcess = null;
-
-            _childJob?.Dispose();
-            _childJob = null;
+            // _connectionService itself is NOT disposed here: it's a DI-owned singleton whose
+            // lifetime spans the whole extension session, not just this provider instance. The DI
+            // container disposes it (tearing down the server process/pipe) on extension unload.
         }
 
         base.Dispose(isDisposing);
