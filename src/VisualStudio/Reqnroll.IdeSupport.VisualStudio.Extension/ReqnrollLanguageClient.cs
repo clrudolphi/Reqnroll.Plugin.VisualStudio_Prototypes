@@ -54,11 +54,15 @@ internal class ReqnrollLanguageClient : LanguageServerProvider
         _stepCodeLensState              = stepCodeLensState;
         _commentToggleState             = commentToggleState;
         _renameStepState                = renameStepState;
-        // Constructor-injecting LspServerConnectionService is what makes server startup eager:
-        // VS.Extensibility constructs this class (to read LanguageServerProviderConfiguration)
-        // well before any .feature file is opened, which resolves the singleton service and
-        // starts its constructor's fire-and-forget process launch immediately. See
-        // LspServerConnectionService's remarks for the full rationale.
+        // LspServerConnectionService is a singleton already resolved (and its eager server launch
+        // already kicked off) by ExtensionEntrypoint.OnInitializedAsync well before this class is
+        // constructed — this constructor param just retrieves the same instance. It is NOT this
+        // constructor that triggers the eager launch: an earlier version of this comment assumed
+        // VS.Extensibility constructs ReqnrollLanguageClient at extension load, independent of
+        // .feature-file activation. Three logged VS sessions disproved that — this class is only
+        // constructed when VS actually activates the LanguageServerProvider (.feature file open),
+        // same as before this change. See ExtensionEntrypoint.OnInitializedAsync's remarks for the
+        // corrected mechanism and the log evidence.
         _connectionService   = connectionService;
         _fileLogger          = new SynchronousFileLogger();
         _traceSource.TraceInformation("ReqnrollLanguageClient: Instance created.");

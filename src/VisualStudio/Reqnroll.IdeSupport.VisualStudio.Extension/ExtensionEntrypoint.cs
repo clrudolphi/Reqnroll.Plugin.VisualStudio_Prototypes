@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.Extensibility;
 using Reqnroll.IdeSupport.VisualStudio.Extension.CommentToggle;
 using Reqnroll.IdeSupport.VisualStudio.Extension.FindStepUsages;
@@ -42,11 +45,44 @@ namespace Reqnroll.IdeSupport.VisualStudio.Extension
             // ExtensionPart subclasses are not auto-registered by the framework; must be explicit.
             serviceCollection.AddSingleton<StepCodeLensProvider>();
 
-            // Owns the LSP server process + duplex pipe. Registered as a singleton so that
-            // constructor-injecting it into ReqnrollLanguageClient (constructed by VS.Extensibility
-            // at extension load, before any .feature file is open) triggers eager process launch —
-            // see LspServerConnectionService's remarks for the full rationale.
+            // Owns the LSP server process + duplex pipe. Registered as a singleton; resolved
+            // eagerly from OnInitializedAsync below (NOT via ReqnrollLanguageClient's own
+            // constructor — see the remarks there for why that turned out not to be early enough).
             serviceCollection.AddSingleton<LspServerConnectionService>();
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// <para>
+        /// This is the extension's true "load" hook: <c>ExtensionCore.CreateAsync</c> fires it
+        /// exactly once, the first time VS requests <b>any</b> service this extension contributes —
+        /// not specifically <c>ReqnrollLanguageClient</c>. Confirmed by decompiling
+        /// <c>Microsoft.VisualStudio.Extensibility.Framework.dll</c>: <c>CreateAsync</c> guards the
+        /// call with <c>bool triggerOnInitialized = serviceProvider == null;</c>, so whichever
+        /// contribution VS activates first — in practice <see cref="StepCodeLensProvider"/>, which
+        /// activates as soon as a <c>.cs</c> file is opened — is what starts the clock, not the
+        /// <c>.feature</c>-file-gated <c>LanguageServerProvider</c>.
+        /// </para>
+        /// <para>
+        /// Resolving <see cref="LspServerConnectionService"/> here (instead of via
+        /// <c>ReqnrollLanguageClient</c>'s constructor) is what actually front-loads server startup:
+        /// three logged VS sessions showed <c>StepCodeLensProvider</c> activating 8–18 seconds before
+        /// <c>ReqnrollLanguageClient</c> did in a "open a .cs file first" workflow, versus the ~20–40ms
+        /// gap the constructor-injection approach was actually delivering (see project memory
+        /// "project-eager-lsp-startup-service" for the log analysis that found this).
+        /// </para>
+        /// </remarks>
+        protected override Task OnInitializedAsync(VisualStudioExtensibility extensibility, CancellationToken cancellationToken)
+        {
+            var traceSource = ServiceProvider.GetRequiredService<TraceSource>();
+            traceSource.TraceInformation(
+                "ExtensionEntrypoint: OnInitializedAsync — resolving LspServerConnectionService eagerly.");
+
+            // Resolving (not just registering) is what triggers construction of the singleton,
+            // whose own constructor kicks off server process launch — see LspServerConnectionService.
+            ServiceProvider.GetRequiredService<LspServerConnectionService>();
+
+            return Task.CompletedTask;
         }
     }
 }
