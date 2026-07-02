@@ -167,7 +167,7 @@ Field performance instrumentation. Every instrumented interactive handler record
 through `IOperationDurationRecorder` (`Diagnostics/Performance`); the primary sink is a `PERF`
 line in the server log, and — when sampling is enabled — a **sampled** `PerfSample` telemetry
 event is emitted for real-world P95 aggregation. See
-[`Performance-Verification-Implementation-Plan.md`](Performance-Verification-Implementation-Plan.md)
+[`Performance-Verification-Implementation-Plan.md`](../Performance-Verification-Implementation-Plan.md)
 (Part B / T3) for the design.
 
 | Property | Example | Notes |

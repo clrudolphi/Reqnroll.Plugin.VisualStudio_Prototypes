@@ -392,7 +392,7 @@ Privacy:
 - **Opt-out respected** — telemetry emission already flows through the opt-out gate on the VS host
   (`IEnableAnalyticsChecker`); the recorder only emits the notification, it does not bypass consent.
 - **Add `PerfSample` to the public telemetry inventory** (§9 commits to publishing one) and to
-  [`build-plan-telemetry-capture.md`](build-plan-telemetry-capture.md), with the `IDEClient`
+  [`build-plan-telemetry-capture.md`](Archive/build-plan-telemetry-capture.md), with the `IDEClient`
   dimension so field P95 can be sliced per IDE — the same breakdown the data-model enhancements table
   already calls for.
 

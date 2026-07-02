@@ -1,6 +1,9 @@
 # Porting Reqnroll.IdeSupport.LSP to VS Code and Rider — Feasibility Analysis
 
-> **Status:** Internal analysis draft  
+> **Status:** Internal analysis draft — **VS Code section superseded** (2026-07-02) by
+> [VSCode-Extension-Implementation-Plan.md](VSCode-Extension-Implementation-Plan.md), which now
+> reflects the built extension. The **Rider section (feasibility, R1–R8 task breakdown) is still
+> the active reference** — no Rider implementation work has started yet.
 > **Date:** 2026-06-29  
 > **Audience:** Core team  
 > **Author:** Hermes Agent  

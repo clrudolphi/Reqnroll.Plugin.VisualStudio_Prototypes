@@ -1,8 +1,14 @@
 # VS Code Extension — Implementation Plan
 
-> **Status:** Phase 1 complete — 26 source files, 9 TypeScript modules  
-> **Branch:** `feat/vscode-extension-initial`  
-> **Date:** 2026-06-30  
+> **Status (updated 2026-07-02):** Core implementation complete — all tasks in the table below,
+> including T11 end-to-end validation, are done. Four items remain open, tracked as GitHub issues
+> rather than in this table: T3 (table-cell decorations), T7 (VS-Code-specific LSP spec coverage),
+> T8 (fold as-built details into the canonical Architecture/Feature-Designs docs), and T12 (Define
+> Step code action has no effect — active bug). Parity fixes made after this doc's original date
+> (`reqnroll/projectFiles` wiring, telemetry, shared method-name constants, a `tfmToShort` bug) are
+> recorded in project memory, not reflected in the table below — the table is otherwise accurate.
+> **Branch:** `feat/vscode-extension-initial`
+> **Original date:** 2026-06-30
 > **Source:** [Porting-to-VSCode-Rider-Analysis](Porting-to-VSCode-Rider-Analysis.md), [LSP-IDE-Support-Architecture](LSP-IDE-Support-Architecture.md)
 
 ---

@@ -44,7 +44,7 @@
 
 ## 1. Nature of the changes
 
-Today diagnostics are **pushed**: [`DiagnosticsPublishHandler`](../src/LSP/Reqnroll.IdeSupport.LSP.Server/Pipeline/DiagnosticsPublishHandler.cs) listens for `MatchCacheChangedNotification` and fires `textDocument/publishDiagnostics` for the affected URI. The client is a passive recipient and we re-send the full set on every cache change.
+Today diagnostics are **pushed**: [`DiagnosticsPublishHandler`](../../src/LSP/Reqnroll.IdeSupport.LSP.Server/Pipeline/DiagnosticsPublishHandler.cs) listens for `MatchCacheChangedNotification` and fires `textDocument/publishDiagnostics` for the affected URI. The client is a passive recipient and we re-send the full set on every cache change.
 
 LSP 3.17 adds **pull diagnostics**: the server advertises a `diagnosticProvider`, the client requests `textDocument/diagnostic` for the document(s) it cares about (and optionally `workspace/diagnostic` for the whole workspace), and the server answers with a report that supports **result-id caching** — an `Unchanged` report when nothing has moved since the client's last result id, plus a server-driven `workspace/diagnostic/refresh` nudge when state changes.
 
@@ -133,7 +133,7 @@ Diagnostics (squiggles + Error List) are rendered natively by the client from wh
 1. **Verify the VS LSP client advertises `textDocument.diagnostic`.** Read the `initialize` capabilities from the `LspInspectorLogger` session log. The VS.Extensibility LSP client supports pull diagnostics in recent VS 2022 builds, but this **must be confirmed against the shipping version we target** before flipping the default. The negotiation gate makes this safe either way:
    - **Advertised →** server answers `textDocument/diagnostic`; `DiagnosticsRefreshHandler` sends `workspace/diagnostic/refresh` on cache changes; the legacy push is suppressed.
    - **Not advertised →** zero behaviour change; `DiagnosticsPublishHandler` keeps pushing `publishDiagnostics` exactly as today.
-2. **Refresh transport already proven.** `workspace/diagnostic/refresh` is a server→client request over the same intercepting pipe that already carries `workspace/codeLens/refresh` and semantic-token refresh, so no new pipe wiring in [`ReqnrollLanguageClient`](../src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Extension/ReqnrollLanguageClient.cs).
+2. **Refresh transport already proven.** `workspace/diagnostic/refresh` is a server→client request over the same intercepting pipe that already carries `workspace/codeLens/refresh` and semantic-token refresh, so no new pipe wiring in [`ReqnrollLanguageClient`](../../src/VisualStudio/Reqnroll.IdeSupport.VisualStudio.Extension/ReqnrollLanguageClient.cs).
 3. **Workspace diagnostics & the Error List.** If VS issues `workspace/diagnostic`, undefined/ambiguous steps in unopened feature files appear in the Error List — a visible behaviour change worth calling out in release notes. If VS only does document pull, the workspace handler stays dorment with no ill effect.
 4. **No double-reporting invariant.** The single negotiated switch (push **xor** pull per session) is the safeguard. A focused manual check in the experimental instance — open a feature with an undefined step, confirm exactly one squiggle and one Error List row — is the acceptance gate before enabling pull by default.
 5. **Per [[feedback-vs-specific-gating]]**, if VS's pull implementation proves partial (e.g. document pull works but refresh is ignored), keep VS on push via `ClientIdeContext.IsVisualStudio` while VS Code / Rider use pull.

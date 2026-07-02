@@ -1,3 +1,10 @@
+> **Archived 2026-07-02.** This is the original, pre-implementation porting checklist. Every item
+> below is now either done (wizards, LSP handlers, connector, analytics/telemetry refactor, VS
+> extension LSP client registration) or superseded by the current design docs. Kept for historical
+> reference only — do not treat anything below as an active backlog. Current tracked work lives in
+> GitHub Issues (see `ISSUE_DRAFTS.md` at the repo root for the first batch, drafted the same day
+> this file was archived).
+
 ## Porting Action Items
 
 ## 0. Prerequisites & Infrastructure

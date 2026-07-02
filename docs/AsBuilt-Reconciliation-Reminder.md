@@ -7,15 +7,15 @@
 
 ---
 
-## The three plans this covers
+## The plans this covers
 
-| Plan | Protocol origin |
-|---|---|
-| [Rename-ChangeAnnotations-Implementation-Plan.md](Rename-ChangeAnnotations-Implementation-Plan.md) | LSP 3.16 `ChangeAnnotation` / `AnnotatedTextEdit` |
-| [InlayHints-Implementation-Plan.md](InlayHints-Implementation-Plan.md) | LSP 3.17 `textDocument/inlayHint` |
-| [PullDiagnostics-Implementation-Plan.md](PullDiagnostics-Implementation-Plan.md) | LSP 3.17 `textDocument/diagnostic` |
+| Plan | Protocol origin | Status |
+|---|---|---|
+| [Rename-ChangeAnnotations-Implementation-Plan.md](Rename-ChangeAnnotations-Implementation-Plan.md) | LSP 3.16 `ChangeAnnotation` / `AnnotatedTextEdit` | Draft — not yet implemented |
+| [InlayHints-Implementation-Plan.md](InlayHints-Implementation-Plan.md) | LSP 3.17 `textDocument/inlayHint` | Draft — not yet implemented |
+| ~~PullDiagnostics-Implementation-Plan.md~~ | LSP 3.17 `textDocument/diagnostic` | **Abandoned (2026-06-25), moved to `docs/Archive/`** — OmniSharp 0.19.9 can't serve it (write-side JSON converters are unimplemented stubs). No as-built reconciliation applies; the abandonment decision itself is recorded in `docs/LSP-IDE-Support-Open-Questions.md` Q19. |
 
-Supporting analysis: the OmniSharp library tops out at **LSP 3.17** (`OmniSharp.Extensions.LanguageServer 0.19.9`), so these three are "free" (modelled in the library); anything 3.18+ would be hand-rolled. Capture that fact in the architecture doc too (see below).
+Supporting analysis: the OmniSharp library tops out at **LSP 3.17** (`OmniSharp.Extensions.LanguageServer 0.19.9`), so the two still-viable plans are "free" (modelled in the library); anything 3.18+ would be hand-rolled. Capture that fact in the architecture doc too (see below).
 
 ---
 
@@ -24,21 +24,21 @@ Supporting analysis: the OmniSharp library tops out at **LSP 3.17** (`OmniSharp.
 ### 1. `LSP-IDE-Support-Feature-Designs.md` (per-feature canonical design)
 - [ ] Add an as-built §entry for **Rename change annotations** (extends the existing F16 §): final `WorkspaceEdit` shape, negotiation fallback, undo-unit behaviour as actually observed in VS.
 - [ ] Add a new feature § for **Inlay hints**: final label format (lift the §11 visual spec + the shipped mockup image), settings defaults, resolve-vs-eager split as built.
-- [ ] Add a new feature § for **Pull diagnostics**: the push⊕pull state machine as shipped, the `auto` default decision, and the workspace-report scope.
-- [ ] Move each plan's "Risks & open questions" into the design doc's deferred/known-limitations sections, resolved or carried forward.
+- [x] ~~Add a new feature § for Pull diagnostics~~ — N/A, abandoned before implementation; nothing shipped to reconcile.
+- [ ] Move each remaining plan's "Risks & open questions" into the design doc's deferred/known-limitations sections, resolved or carried forward.
 
 ### 2. `LSP-IDE-Support-Architecture.md` (module/component inventory)
-- [ ] Register new components: `WorkspaceEditBuilder`, `GherkinInlayHintService` + `FeatureInlayHintHandler`, `FeatureDiagnosticsComputer` + the two diagnostic handlers + `DiagnosticsRefreshHandler`.
-- [ ] Note the diagnostics transport change (push → push/pull negotiated) in the cross-cutting "diagnostics" description.
+- [ ] Register new components: `WorkspaceEditBuilder`, `GherkinInlayHintService` + `FeatureInlayHintHandler`.
+- [x] ~~Note the diagnostics transport change (push → push/pull negotiated)~~ — N/A, diagnostics stay push-only; abandonment is already noted in Open-Questions Q19.
 - [ ] Record the **library ceiling = LSP 3.17** fact and the implication that 3.18+ features require custom DTOs.
 
 ### 3. `LSP-IDE-Support-Overview.md` (scope / roadmap)
-- [ ] Add the three features to the feature index / phase roadmap (assign F-numbers if the F-series convention continues).
+- [ ] Add the two still-viable features to the feature index / phase roadmap (assign F-numbers if the F-series convention continues).
 - [ ] Update the cross-client capability story (the §7 matrices) in the release-strategy section.
 
 ### 4. `LSP-IDE-Support-Open-Questions.md` (Q-register / risks)
-- [ ] Promote the per-plan risk ids (`RA-*`, `IH-*`, `PD-*`) into the Q-register, or close them with the as-built answer.
-- [ ] Explicitly resolve or carry **PD-4** (pull does not fix the `(uri,project)` / Q22 ambiguity; workspace per-`(uri,project)` reporting is the registered follow-on).
+- [ ] Promote the per-plan risk ids (`RA-*`, `IH-*`) into the Q-register, or close them with the as-built answer, once Rename annotations / Inlay hints ship.
+- [x] Q19 (pull diagnostics) already resolved-as-abandoned in the Q-register (2026-07-02).
 
 ### 5. Memory (`~/.claude/.../memory/`)
 - [ ] Add/refresh memory entries for each shipped feature (mirroring existing `project-f*` notes), including the VS capability-verification outcome from each plan's Phase 0.

@@ -723,13 +723,36 @@ Several verification options were considered, organized as layers:
 | 3 | **CI regression tracking** — run a benchmark suite per-PR on a fixed runner, gate on regression % vs. a stored baseline | Prevents gradual perf creep | Considered; deferred (depends on Layer 2 harness existing first) |
 | 4 | **Field instrumentation** — protocol handlers record their own durations and emit them via the existing logging path (and optionally as a telemetry metric), yielding real-world P95 from actual user workspaces | Real-world performance on real hardware/workspaces, where the "typical hardware" assumption is actually exercised | **Will implement** |
 
-**Adopted approach: Layers 2 and 4.** Layer 2 provides reproducible confirmation of the design targets against a controlled workload; Layer 4 validates that those targets hold in the field, where synthetic corpora cannot. Layer 2 absolute thresholds are asserted on a designated reference machine (not shared CI runners). Layers 1 and 3 remain available to adopt later — Layer 3 in particular becomes cheap once the Layer 2 harness exists.
+**Adopted approach: Layers 2 and 4.** Layer 2 provides reproducible confirmation of the design targets against a controlled workload; Layer 4 validates that those targets hold in the field, where synthetic corpora cannot. Layer 2 absolute thresholds are asserted on a designated reference machine (not shared CI runners). Layers 1 and 3 remain available to adopt later — Layer 3 in particular becomes cheap once the Layer 2 harness exists (the harness already writes JSON in the Layer 3 baseline format, see below).
 
-Layer 2 requires two artifacts that do not yet exist — a benchmarking harness and a pinned representative corpus matching the "typical workspace conditions" (≤500 `.feature` files, ≤2,000 binding patterns). Building these is tracked as non-feature engineering work — see [§11 Non-Feature Engineering Tasks](#11-non-feature-engineering-tasks) (T1, T2).
+**As-built (Layers 2 and 4 are implemented).** The Layer 2 harness is
+`tests/Performance/Reqnroll.IdeSupport.LSP.Server.Benchmarks` (console tool) +
+`…Benchmarks.Core` (harness/scenario/reporting library), driven against the pinned corpus at
+`tests/Performance/Corpus/` (structural-fingerprint-pinned, guarded by `CorpusDriftTests`). It
+hosts a real server — in-process over an in-memory pipe by default, or `--out-of-process` over
+stdio against the built exe (the production transport) — and reports P50/P95/P99 per operation
+against the §9 targets, plus a separate `session` command modelling latency under realistic
+concurrent editing load. See [src/LSP/CONTRIBUTING.md](../src/LSP/CONTRIBUTING.md#performance-benchmarking)
+for usage. Layer 4 field instrumentation lives under `LSP.Server/Diagnostics/Performance/`
+(`IOperationDurationRecorder`, sampled `PerfSample` telemetry), wired into the semanticTokens,
+completion, definition, and diagnostics-push handlers.
+
+**Known gap:** the two Roslyn/reflection binding-discovery batch scenarios, and representative
+bound-state numbers for definition/step-completion, need a *built* corpus bindings assembly
+(`--corpus-assembly <path>`) that doesn't exist yet — without it those scenarios report as
+skipped rather than faked. Layer 1 (micro-benchmarks) and Layer 3 (CI regression gating) remain
+deferred by design; the JSON output format already doubles as the Layer 3 baseline. See
+`docs/Performance-Verification-Implementation-Plan.md` for the full as-built detail.
 
 ### Telemetry
 
-Telemetry uses HTTP (matching the Reqnroll runtime approach) rather than the Application Insights SDK. The LSP specification also defines a `telemetry/event` notification (server → client) that allows the server to ask the IDE client to relay telemetry on its behalf. This introduces a third architecture option alongside direct HTTP from the server and direct HTTP from each IDE client. The choice between these approaches is an open question — see [Q11](LSP-IDE-Support-Open-Questions.md).
+**As-built:** the server emits the LSP `telemetry/event` notification (server → client); each IDE
+host owns the concrete transmitter — `AnalyticsTransmitter` in VS's `VSSDKIntegration` (standard
+`Microsoft.ApplicationInsights` SDK, not a hand-rolled HTTP client), and `telemetry.ts` /
+`TelemetryReporter` in VS Code — both pointed at the same Application Insights resource. This
+resolved [Q11](LSP-IDE-Support-Open-Questions.md) in favor of option (c); see the archived
+`docs/Archive/build-plan-telemetry-capture.md` and `docs/Archive/plan-refactor-analytics-appinsights.md`
+for the full as-built design.
 
 The following monitoring events from the existing `Reqnroll.VisualStudio` extension should be carried forward:
 
@@ -934,7 +957,7 @@ This section tracks engineering work that is **not** an end-user feature (F1–F
 
 | # | Task | Related to | Status |
 |---|------|-----------|--------|
-| T1 | **Performance benchmarking harness** — a console/test harness that launches a real LSP server, drives it through a simulated client over its actual transport, and reports per-operation latency percentiles against the §9 targets (Performance Verification, Layer 2). Asserts absolute thresholds on a designated reference machine. | [Performance Verification](#performance-verification) | Open |
-| T2 | **Representative benchmark corpus** — a pinned, versioned set of `.feature` files and binding patterns matching the "typical workspace conditions" (≤500 feature files, ≤2,000 binding patterns), used as the controlled workload for T1. Includes a generator or curation script so the corpus is reproducible. | [Performance Verification](#performance-verification) | Open |
-| T3 | **Field performance instrumentation** — wrap protocol handlers to record their own durations and emit them via the existing logging path (and optionally as a telemetry metric), for real-world P95 measurement (Performance Verification, Layer 4). | [Performance Verification](#performance-verification), [Telemetry](#telemetry) | Open |
+| T1 | **Performance benchmarking harness** — a console/test harness that launches a real LSP server, drives it through a simulated client over its actual transport, and reports per-operation latency percentiles against the §9 targets (Performance Verification, Layer 2). Asserts absolute thresholds on a designated reference machine. | [Performance Verification](#performance-verification) | **Done** — `tests/Performance/Reqnroll.IdeSupport.LSP.Server.Benchmarks(.Core)`; see [src/LSP/CONTRIBUTING.md](../src/LSP/CONTRIBUTING.md#performance-benchmarking). Binding-discovery batch scenarios need a built corpus assembly (see §9 note) — tracked separately, not blocking. |
+| T2 | **Representative benchmark corpus** — a pinned, versioned set of `.feature` files and binding patterns matching the "typical workspace conditions" (≤500 feature files, ≤2,000 binding patterns), used as the controlled workload for T1. Includes a generator or curation script so the corpus is reproducible. | [Performance Verification](#performance-verification) | **Done** — `tests/Performance/Corpus/`, structural-fingerprint-pinned (`corpus.manifest.json`), guarded by `CorpusDriftTests`; regenerable via `Benchmarks generate-corpus`. |
+| T3 | **Field performance instrumentation** — wrap protocol handlers to record their own durations and emit them via the existing logging path (and optionally as a telemetry metric), for real-world P95 measurement (Performance Verification, Layer 4). | [Performance Verification](#performance-verification), [Telemetry](#telemetry) | **Done** — `LSP.Server/Diagnostics/Performance/` (`IOperationDurationRecorder`, sampled `PerfSample`), wired into semanticTokens, completion, definition, and diagnostics-push. |
 | T4 | Retrofit Reqnroll.VisualStudio.Specs tests to new code | [Testing Strategy](#8-testing-strategy) | Open |

@@ -44,7 +44,10 @@ Much of this document is derived from findings from the [`Reqnroll.Plugin.Visual
 
 - Feature parity with the existing `Reqnroll.VisualStudio` extension
 - Support for Visual Studio 2022/2026, VS Code, and JetBrains Rider from a single LSP server
-- Test-driven development with clear per-phase verification gates
+- Test-driven development with clear per-phase verification gates, including **measured**
+  performance against defined latency targets, not just functional correctness — see
+  [Architecture §9 Performance Verification](LSP-IDE-Support-Architecture.md#performance-verification)
+  for the adopted approach and its as-built benchmarking harness
 - Release as a "Preview" extension alongside the existing extension during transition
 
 ### Non-Goals
